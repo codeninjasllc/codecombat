@@ -200,6 +200,7 @@ module.exports = class CreateTeacherAccountView extends RootView
       jqxhr = me.save()
       if not jqxhr
         throw new Error('Could not save user')
+      @trigger 'update-settings'
       return jqxhr
       
     .then =>
@@ -215,6 +216,7 @@ module.exports = class CreateTeacherAccountView extends RootView
       else
         { name, email, password1 } = forms.formToObject(@$el)
         jqxhr = me.signupWithPassword(name, email, password1)
+      @trigger 'signup'
       return jqxhr
       
     .then =>

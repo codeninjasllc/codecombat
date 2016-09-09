@@ -136,7 +136,7 @@ describe 'CreateTeacherAccountView', ->
             status: 201
             responseText: JSON.stringify(_.extend({_id:'fraghlarghl'}, JSON.parse(request.params)))
           })
-          _.defer =>
+          view.once 'update-settings', =>
             request = jasmine.Ajax.requests.mostRecent()
             expect(request.url).toBe("/db/user/1234")
             body = JSON.parse(request.params)
@@ -146,7 +146,7 @@ describe 'CreateTeacherAccountView', ->
               status: 200
               responseText: '{}'
             })
-            _.defer =>
+            view.once 'signup', =>
               request = jasmine.Ajax.requests.mostRecent()
               expect(request.url).toBe("/db/user/1234/signup-with-facebook")
               expected = {"name":"New Name","email":"some@email.com","facebookID":"abcd","facebookAccessToken":"1234"}
@@ -175,7 +175,7 @@ describe 'CreateTeacherAccountView', ->
         request = jasmine.Ajax.requests.mostRecent()
         expect(request.url).toBe('/auth/login-gplus')
 
-    describe 'when the user connects with F+ and there isn\'t already an associated account', ->
+    describe 'when the user connects with G+ and there isn\'t already an associated account', ->
       beforeEach ->
         request = jasmine.Ajax.requests.mostRecent()
         request.respondWith({ status: 404, responseText: '{}' })
@@ -202,7 +202,7 @@ describe 'CreateTeacherAccountView', ->
             status: 201
             responseText: JSON.stringify(_.extend({_id:'fraghlarghl'}, JSON.parse(request.params)))
           })
-          _.defer =>
+          view.once 'update-settings', =>
             request = jasmine.Ajax.requests.mostRecent()
             expect(request.url).toBe("/db/user/1234")
             body = JSON.parse(request.params)
@@ -212,7 +212,7 @@ describe 'CreateTeacherAccountView', ->
               status: 200
               responseText: '{}'
             })
-            _.defer =>
+            view.once 'signup', =>
               request = jasmine.Ajax.requests.mostRecent()
               expect(request.url).toBe("/db/user/1234/signup-with-gplus")
               expected = {"name":"New Name","email":"some@email.com","gplusID":"abcd","gplusAccessToken":"1234"}
@@ -260,7 +260,7 @@ describe 'CreateTeacherAccountView', ->
         for attr in ['role', 'firstName', 'lastName']
           expect(attrs[attr]).toBeDefined()
         request.respondWith({ status: 201, responseText: '{}' })
-        _.defer =>
+        view.once 'signup', =>
           request = jasmine.Ajax.requests.mostRecent()
           expect(request.url).toBe('/db/user/1234/signup-with-password')
           body = JSON.parse(request.params)
@@ -279,7 +279,7 @@ describe 'CreateTeacherAccountView', ->
             responseText: JSON.stringify(_.extend({_id:'fraghlarghl'}, JSON.parse(request.params)))
           })
           expect(request.url).toBe('/db/user/1234')
-          _.defer =>
+          view.once 'signup', =>
             request = jasmine.Ajax.requests.mostRecent()
             expect(request.url).toBe('/db/user/1234/signup-with-password')
             request.respondWith({ status: 201, responseText: '{}' })
