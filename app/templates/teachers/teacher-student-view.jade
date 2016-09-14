@@ -1,0 +1,26 @@
+extends /templates/base-flat
+
+block page_nav
+  include ../courses/teacher-dashboard-nav.jade
+
+block content
+
+  .container
+    if !me.isAnonymous() && me.isTeacher()
+    - var isOwner = view.classroom ? view.classroom.get('ownerID') === me.id : false;
+      // - var validStudent = ...  
+      // load all students in this class
+      // check if this student is in the class
+        
+    if isOwner
+      // also check if validStudent 
+      h1 Student Profile Page 
+      p Class name: 
+        span= view.classroom.get('name')
+      p Student name: 
+        span= view.user.get('name')
+      p Student Last Played: 
+        span= view.lastPlayedString
+          
+    else
+      p You don't own me! (this classroom)
