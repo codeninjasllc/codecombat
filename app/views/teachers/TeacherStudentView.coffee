@@ -23,11 +23,11 @@ module.exports = class TeacherStudentView extends RootView
   # helper: helper
   events:
     'click .assign-student-button': 'onClickAssignStudentButton'
-    'click .enroll-student-button': 'onClickEnrollStudentButton'
+    'click .enroll-student-button': 'onClickEnrollStudentButton' # this button isn't working yet
 
   getTitle: -> return @user?.broadName()
 
-  initialize: (options, classroomID, studentID) ->
+  initialize: (options, classroomID, @studentID) ->
     @classroom = new Classroom({_id: classroomID})
     @listenToOnce @classroom, 'sync', @onClassroomSync
     @supermodel.trackRequest(@classroom.fetch())
@@ -47,14 +47,35 @@ module.exports = class TeacherStudentView extends RootView
     # @levels.fetchForClassroom(classroomID, {data: {project: 'name,original,practice,slug'}})
     # @levels.on 'add', (model) -> @_byId[model.get('original')] = model # so you can 'get' them
     @supermodel.trackRequest(@levels.fetchForClassroom(classroomID, {data: {project: 'name,original'}}))
+    #
+    # @user = new User({_id: studentID})
+    # @supermodel.trackRequest(@user.fetch())
 
-    @user = new User({_id: studentID})
-    @supermodel.trackRequest(@user.fetch())
+    @urls = require('core/urls')
 
+
+    @singleStudentLevelProgressDotTemplate = require 'templates/teachers/hovers/progress-dot-single-student-level'
     @levelProgressMap = {}
 
     super(options)
 
+  onLoaded: ->
+    if @students.loaded and not @destroyed
+      @user = _.find(@students.models, (s)=> s.id is @studentID)
+      @updateLastPlayedString()
+      @updateLevelProgressMap()
+      @render()
+    super()
+
+  afterRender: ->
+    super(arguments...)
+    $('.progress-dot, .btn-view-project-level').each (i, el) ->
+      dot = $(el)
+      dot.tooltip({
+        html: true
+        container: dot
+      }).delegate '.tooltip', 'mousemove', ->
+        dot.tooltip('hide')
 
   onClassroomSync: ->
     # Now that we have the classroom from db, can request all level sessions for this classroom
@@ -62,6 +83,12 @@ module.exports = class TeacherStudentView extends RootView
     @sessions.comparator = 'changed' # Sort level sessions by changed field, ascending
     @listenTo @sessions, 'sync', @onSessionsSync
     @supermodel.trackRequests(@sessions.fetchForAllClassroomMembers(@classroom))
+
+    @students = new Users()
+    jqxhrs = @students.fetchForClassroom(@classroom, removeDeleted: true)
+    # @listenTo @students, ->
+    #   console.log @students
+    @supermodel.trackRequests jqxhrs
 
   onSessionsSync: ->
     # Now we have some level sessions, and enough data to calculate last played string
@@ -97,7 +124,7 @@ module.exports = class TeacherStudentView extends RootView
 
   updateLastPlayedString: ->
     # Make sure all our data is loaded, @sessions may not even be intialized yet
-    return unless @courses.loaded and @levels.loaded and @sessions?.loaded and @user.loaded
+    return unless @courses.loaded and @levels.loaded and @sessions?.loaded and @user?.loaded
 
     # Use lodash to find the last session for our user, @sessions already sorted by changed date
     session = _.findLast @sessions.models, (s) => s.get('creator') is @user.id
@@ -128,18 +155,18 @@ module.exports = class TeacherStudentView extends RootView
     @render()
 
   updateLevelProgressMap: ->
-    return unless @courses.loaded and @levels.loaded and @sessions?.loaded and @user.loaded
+    return unless @courses.loaded and @levels.loaded and @sessions?.loaded and @user?.loaded
 
     # Map levels to sessions once, so we don't have to search entire session list multiple times below
-    levelSessionMap = {}
-    for session in @sessions.models
-      levelSessionMap[session.get('level').original] = session
+    @levelSessionMap = {}
+    for session in @sessions.models when session.get('creator') is @studentID
+      @levelSessionMap[session.get('level').original] = session
 
     # Create mapping of level to student progress
     @levelProgressMap = {}
     for versionedCourse in @classroom.get('courses') ? []
       for versionedLevel in versionedCourse.levels
-        session = levelSessionMap[versionedLevel.original]
+        session = @levelSessionMap[versionedLevel.original]
         if session
           if session.get('state')?.complete
             @levelProgressMap[versionedLevel.original] = 'complete'

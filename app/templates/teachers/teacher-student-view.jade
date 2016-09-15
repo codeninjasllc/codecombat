@@ -4,107 +4,125 @@ block page_nav
   include ../courses/teacher-dashboard-nav.jade
 
 block content
-  .container
-    +breadcrumbs
-    if !me.isAnonymous() && me.isTeacher()
-    - var isOwner = view.classroom ? view.classroom.get('ownerID') === me.id : false;
-      // - var validStudent = ...  
-      // load all students in this class
-      // check if this student is in the class
+
+  if !view.user
+    div Loading
+  else
+    .container
+      +breadcrumbs
+      if !me.isAnonymous() && me.isTeacher()
+      - var isOwner = view.classroom ? view.classroom.get('ownerID') === me.id : false;
+        // - var validStudent = ...  
+        // load all students in this class
+        // check if this student is in the class
+          
+      if isOwner
+        // also check if validStudent 
+        h3 Student Profile: 
+          span= view.user.get('name')
+          //- - console.log (view.user.get('email'))
+        // this user object doesn't have an email property
+        if (view.user.get('email'))
+          //- - console.log ("User has an email")
+          p Student Email: 
+            span= view.user.get('email')
+        else
+          p 
+            i Student has no email address set.
+        p Last Level Played: 
+          span= view.lastPlayedString
+          
+        - var status = view.user.prepaidStatus()
+        span(data-i18n='view.user.status')
+        span.spr License Status: 
+        strong(class= status === 'expired' ? 'text-danger' : '')= view.studentStatusString()
         
-    if isOwner
-      // also check if validStudent 
-      h3 Student Profile: 
-        span= view.user.get('name')
-      p Student Last Played: 
-        span= view.lastPlayedString
+        
+        h4 Actions:
+          // Assign courses from dropdown
+          // Export CSV
+          // Apply License
+          // Edit password
+          // Remove Student
+
+
+        div Here's some course progress!
+
+        .student-levels 
+          div.student-levels-progress
+            each versionedCourse in view.classroom.get('courses') || []
+              - var course = _.find(view.courses.models, function(c) {return c.id === versionedCourse._id;});
+              if !course
+                - continue;
+              - var instance = view.courseInstances.findWhere({ courseID: course.id, classroomID: view.classroom.id })
+              - if (instance && instance.hasMember(view.user))
+                div.course-info= course.get('name')
+                - var levels = view.classroom.getLevels({courseID: course.id}).models
+                each level, index in levels
+                  - var levelNumber = view.classroom.getLevelNumber(level.get('original'), index + 1)
+                  //- - console.log (level)
+                  - var levelProgress = view.levelProgressMap[level.get('original')]
+                  //- p= levelNumber + ". " + level.name + " Progress: " + view.levelProgressMap[level.original]
+                  //- - console.log(level)
+                  +studentLevelProgressDot(levelProgress, level, levelNumber, course)
+
       
+                      
+        if status == 'enrolled'
+          div Student isn't in the following courses!
+          each versionedCourse in view.classroom.get('courses') || []
+            - var course = _.find(view.courses.models, function(c) {return c.id === versionedCourse._id;});
+            if !course
+              - continue;
+            - var instance = view.courseInstances.findWhere({ courseID: course.id, classroomID: view.classroom.id })
+            - if (!(instance && instance.hasMember(view.user)))
+                div= course.get('name')
+                // add a button to assign this course 
+                
+        //- else
+        //-   p Apply a license to this student to assign additional courses!
+        //-   button.enroll-student-button.btn.btn-navy(data-i18n="teacher.apply_license", data-user-id=view.user.id, data-event-action="Teachers Class Enrollment Enroll Student")
+        //-   // this button doesn't work yet
+        
 
-    - var status = view.user.prepaidStatus()
-    span(data-i18n='view.user.status')
-    span.spr License Status: 
-    strong(class= status === 'expired' ? 'text-danger' : '')= view.studentStatusString()
-
-    div Here's some course progress!
-    
-    table.table
-      each versionedCourse in view.classroom.get('courses') || []
-        - var course = _.find(view.courses.models, function(c) {return c.id === versionedCourse._id;});
-
-        if !course
-          - continue;
-        - var instance = view.courseInstances.findWhere({ courseID: course.id, classroomID: view.classroom.id })
-        - if (instance && instance.hasMember(view.user))
-          th= course.get('name')
-          each level, index in versionedCourse.levels || []
-            - var levelNumber = view.classroom.getLevelNumber(level.original, index + 1)
-            tr
-              td= levelNumber
-              td= level.name
-              td= view.levelProgressMap[level.original]
-              
-    if status == 'enrolled'
-      div Student isn't in the following courses!
-      each versionedCourse in view.classroom.get('courses') || []
-        - var course = _.find(view.courses.models, function(c) {return c.id === versionedCourse._id;});
-        if !course
-          - continue;
-        - var instance = view.courseInstances.findWhere({ courseID: course.id, classroomID: view.classroom.id })
-        - if (!(instance && instance.hasMember(view.user)))
-            div= course.get('name')
-            // add a button to assign this course 
-            
+mixin studentLevelProgressDot(levelProgress, level, levelNumber, course)
+  //- TODO: Refactor with TeacherClassesView jade
+  - dotClass = levelProgress == 'complete' ? 'forest' : (levelProgress == 'started' ? 'gold' : '');
+  - levelName = level.get('name')
+  - var context = { levelName: levelName, levelNumber: levelNumber, moment: moment , started: levelProgress == 'started', completed: levelProgress == 'complete'}; 
+  if view.levelSessionMap && view.levelSessionMap[level.get('original')]
+    - context.session = view.levelSessionMap[level.get('original')];
+  - link = null;
+  - labelText = levelNumber;
+  if level.isLadder()
+    - var courseInstance = view.courseInstances.findWhere({ courseID: course.id, classroomID: view.classroom.id });
+    if courseInstance
+      - link = view.urls.courseArenaLadder({level: level, courseInstance: courseInstance});
+      - labelText = translate('courses.arena');
     else
-      p Apply a license to this student to assign additional courses!
-      button.enroll-student-button.btn.btn-navy(data-i18n="teacher.apply_license", data-user-id=view.user.id, data-event-action="Teachers Class Enrollment Enroll Student")
-      // this button doesn't work yet
-
-
-    //- - var paidFor = view.user.isEnrolled();
-    //- for courseInstance in view.courseInstances.models
-    //-   - var inCourse = _.contains(courseInstance.get('members'), view.user.id);
-    //-   if !(inCourse || view.teacherMode)
-    //-     - continue;
-    //-   - var course = view.courses.get(courseInstance.get('courseID'));
-    //-   - var sessions = courseInstance.sessionsByUser[view.user.id] || [];
-    //-   if !(course.get('free') || paidFor)
-    //-     - continue;
-    //-   if inCourse
-    //-     .row
-    //-       .col-sm-3.text-right= i18n(course.attributes, 'name')
-    //-       .col-sm-9
-    //-         if inCourse
-    //-           - var levels = view.classroom.getLevels({courseID: course.id});
-    //-           - var numLevels = levels.size();
-    //-           - var sessionMap = _.zipObject(_.map(sessions, function(s) { return s.get('level').original; }), sessions);
-    //-           - var levelCellWidth = 100.00;
-    //-           if numLevels > 0
-    //-             - levelCellWidth = 100.00 / numLevels;
-    //-           - var css = "width:"+levelCellWidth+"%;"
-    //-           - var i = 0;
-    //-           .progress
-    //-             each trimModel in levels.models
-    //-               - var level = view.levels.get(trimModel.get('original')); // get the level loaded through the db
-    //-               if !level 
-    //-                 - continue;
-    //-               - var levelNumber = view.classroom.getLevelNumber(level.get('original'), i + 1)
-    //-               - i++
-    //-               - var session = sessionMap[level.get('original')];
-    //-               a(href=view.getLevelURL(level, course, courseInstance, session))
-    //-                 - var content = view.levelPopoverContent(level, session, levelNumber);
-    //-                 if session && session.get('state') && session.get('state').complete
-    //-                   .progress-bar.progress-bar-complete(style=css, data-content=content, data-toggle='popover')= levelNumber
-    //-                 else if session
-    //-                   .progress-bar.progress-bar-started(style=css, data-content=content, data-toggle='popover')= levelNumber
-    //-                 else
-    //-                   .progress-bar.progress-bar-default(style=css, data-content=content, data-toggle='popover')= levelNumber
-    //-   else if paidFor
-    //-     .text-center
-    //-       button.enable-btn.btn.btn-info.btn-sm.text-uppercase(data-user-id=view.user.id, data-course-instance-cid=courseInstance.cid)
-    //-         span.spr(data-i18n="courses.assign")
-    //-         span= i18n(course.attributes, 'name')
-    //-         
-            
+      - labelText = translate('courses.arena');
+    - dotClass += ' progress-dot-lg';
+  else if level.isProject()
+    if levelProgress == 'started' || levelProgress == 'complete'
+      if view.levelSessionMap && view.levelSessionMap[level.get('original')]
+        - link = view.urls.playDevLevel({level: level, session: view.levelSessionMap[level.get('original')], course: course});
+      - labelText = translate('teacher.view_student_project');
+      - dotClass = 'navy';
+    else
+      - labelText = translate('teacher.project');
+    - dotClass += ' progress-dot-lg';
+  .progress-dot.level-progress-dot(class=dotClass, data-html='true', data-title=view.singleStudentLevelProgressDotTemplate(context))
+    if link
+      a(href=link)
+        +progressDotLabel(labelText)
+    else
+      +progressDotLabel(labelText)
+        
+mixin progressDotLabel(label)
+  .dot-label.text-center
+    .dot-label-inner
+      = label
+      
 mixin breadcrumbs
   .breadcrumbs
     a(data-i18n='teacher.my_classes' href='/teachers/classes')
