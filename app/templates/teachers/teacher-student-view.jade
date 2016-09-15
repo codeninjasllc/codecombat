@@ -38,7 +38,7 @@ block content
         strong(class= status === 'expired' ? 'text-danger' : '')= view.studentStatusString()
         
         
-        h4 Actions:
+        //- h4 Actions:
           // Assign courses from dropdown
           // Export CSV
           // Apply License
@@ -46,25 +46,28 @@ block content
           // Remove Student
 
 
-        div Here's some course progress!
-
         .student-levels 
+          h4
+            strong Course Progress 
           div.student-levels-progress
             each versionedCourse in view.classroom.get('courses') || []
-              - var course = _.find(view.courses.models, function(c) {return c.id === versionedCourse._id;});
-              if !course
-                - continue;
-              - var instance = view.courseInstances.findWhere({ courseID: course.id, classroomID: view.classroom.id })
-              - if (instance && instance.hasMember(view.user))
-                div.course-info= course.get('name')
-                - var levels = view.classroom.getLevels({courseID: course.id}).models
-                each level, index in levels
-                  - var levelNumber = view.classroom.getLevelNumber(level.get('original'), index + 1)
-                  //- - console.log (level)
-                  - var levelProgress = view.levelProgressMap[level.get('original')]
-                  //- p= levelNumber + ". " + level.name + " Progress: " + view.levelProgressMap[level.original]
-                  //- - console.log(level)
-                  +studentLevelProgressDot(levelProgress, level, levelNumber, course)
+                - var course = _.find(view.courses.models, function(c) {return c.id === versionedCourse._id;});
+                if !course
+                  - continue;
+                - var instance = view.courseInstances.findWhere({ courseID: course.id, classroomID: view.classroom.id })
+                - if (instance && instance.hasMember(view.user))
+                  if course
+                    div.course-row.alternating-background
+                      strong
+                        div.course-info= course.get('name')
+                      - var levels = view.classroom.getLevels({courseID: course.id}).models
+                      each level, index in levels
+                        - var levelNumber = view.classroom.getLevelNumber(level.get('original'), index + 1)
+                        //- - console.log (level)
+                        - var levelProgress = view.levelProgressMap[level.get('original')]
+                        //- p= levelNumber + ". " + level.name + " Progress: " + view.levelProgressMap[level.original]
+                        //- - console.log(level)
+                        +studentLevelProgressDot(levelProgress, level, levelNumber, course)
 
       
                       
