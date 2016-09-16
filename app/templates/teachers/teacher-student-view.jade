@@ -44,7 +44,32 @@ block content
           // Apply License
           // Edit password
           // Remove Student
-
+        .student-chart
+          div.student-levels-progress
+            //- if view.allLevelSessionMap
+              //- - console.log (view.allLevelSessionMap)
+            each versionedCourse in view.classroom.get('courses') || []
+                - var course = _.find(view.courses.models, function(c) {return c.id === versionedCourse._id;});
+                if !course
+                  - continue;
+                - var instance = view.courseInstances.findWhere({ courseID: course.id, classroomID: view.classroom.id })
+                - if (instance && instance.hasMember(view.user))
+                  if course
+                    div.course-row.alternating-background
+                      strong
+                        div.course-info= course.get('name')
+                      - var coursePlaytime = 0
+                      - var levels = view.classroom.getLevels({courseID: course.id}).models
+                      each level, index in levels
+                        - var levelNumber = view.classroom.getLevelNumber(level.get('original'), index + 1)
+                        //- - console.log (level)
+                        - var levelProgress = view.levelProgressMap[level.get('original')]
+                        if view.levelSessionMap && view.levelSessionMap[level.get('original')]
+                          - var session = view.levelSessionMap[level.get('original')];
+                          - coursePlaytime += session.get('playtime')
+                          - var levelAverage = view.allLevelSessionMap[level.get('original')]
+                          p= levelNumber + ". " + level.get('name') + ": " + session.get('playtime') + " (average: " + levelAverage + ")"
+                      p= coursePlaytime 
 
         .student-levels 
           h4
@@ -95,6 +120,7 @@ mixin studentLevelProgressDot(levelProgress, level, levelNumber, course)
   - var context = { levelName: levelName, levelNumber: levelNumber, moment: moment , started: levelProgress == 'started', completed: levelProgress == 'complete'}; 
   if view.levelSessionMap && view.levelSessionMap[level.get('original')]
     - context.session = view.levelSessionMap[level.get('original')];
+    //- - console.log(view.levelSessionMap[level.get('original')])
   - link = null;
   - labelText = levelNumber;
   if level.isLadder()

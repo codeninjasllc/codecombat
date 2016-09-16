@@ -64,6 +64,7 @@ module.exports = class TeacherStudentView extends RootView
       @user = _.find(@students.models, (s)=> s.id is @studentID)
       @updateLastPlayedString()
       @updateLevelProgressMap()
+      @updateLevelAverages()
       @render()
     super()
 
@@ -96,6 +97,7 @@ module.exports = class TeacherStudentView extends RootView
     return if @destroyed # Don't do anything if page was destroyed after db request
     @updateLastPlayedString()
     @updateLevelProgressMap()
+    @updateLevelAverages()
 
 
   # onCourseInstancesSync: ->
@@ -162,6 +164,7 @@ module.exports = class TeacherStudentView extends RootView
     for session in @sessions.models when session.get('creator') is @studentID
       @levelSessionMap[session.get('level').original] = session
 
+
     # Create mapping of level to student progress
     @levelProgressMap = {}
     for versionedCourse in @classroom.get('courses') ? []
@@ -175,7 +178,37 @@ module.exports = class TeacherStudentView extends RootView
         else
           @levelProgressMap[versionedLevel.original] = 'not started'
 
+  updateLevelAverages: ->
+    return unless @courses.loaded and @levels.loaded and @sessions?.loaded
 
+    @allLevelSessionMap = {}
+    for versionedCourse in @classroom.get('courses') ? []
+      for versionedLevel in versionedCourse.levels
+        @playTime = 0
+        @timesPlayed = 0
+        for session in @sessions.models
+          if session.get('level').original == versionedLevel.original
+            @playTime += session.get('playtime') or 0
+            # console.log (session.get('playtime'))
+            @timesPlayed += 1
+        if @timesPlayed
+
+          console.log "playtime", @playTime
+          console.log "times played", @timesPlayed
+          @allLevelSessionMap[versionedLevel.original] = Math.round(@playTime / @timesPlayed)
+    console.log (@allLevelSessionMap)
+
+    # new map for averages of all classroom playtimes
+    # @averageLevelPlaytimeMap = {}
+    #   for versionedCourse in @classroom.get('courses') ? []
+    #     for versionedLevel in versionedCourse.levels
+    #       var totalPlaytime = null
+    #       var totalSessions = 0
+    #       session = @levelSessionMap[versionedLevel.original]
+    #       # get playtimes for each session in all classroom sessions of this course with this particular level
+    #       if totalPlaytime
+    #         var averagePlaytime = totalPlaytime / totalSessions
+    #         @averagePlaytimeMap[versionedLevel.original] = averagePlaytime
 
   studentStatusString: () ->
     status = @user.prepaidStatus()
