@@ -8,6 +8,7 @@ LevelSessions = require 'collections/LevelSessions'
 User = require 'models/User'
 Users = require 'collections/Users'
 CourseInstances = require 'collections/CourseInstances'
+require 'vendor/d3'
 # Users = require 'collections/Users'
 # helper = require 'lib/coursesHelper'
 # popoverTemplate = require 'templates/courses/classroom-level-popover'
@@ -64,7 +65,7 @@ module.exports = class TeacherStudentView extends RootView
       @user = _.find(@students.models, (s)=> s.id is @studentID)
       @updateLastPlayedString()
       @updateLevelProgressMap()
-      @updateLevelAverages()
+      @updateLevelDataMap()
       @render()
     super()
 
@@ -77,6 +78,102 @@ module.exports = class TeacherStudentView extends RootView
         container: dot
       }).delegate '.tooltip', 'mousemove', ->
         dot.tooltip('hide')
+
+    @drawGraph()
+
+  drawGraph: ->
+    data = [{
+        "sale": "202",
+        "year": "2000"
+    }, {
+        "sale": "215",
+        "year": "2001"
+    }, {
+        "sale": "179",
+        "year": "2002"
+    }, {
+        "sale": "199",
+        "year": "2003"
+    }, {
+        "sale": "134",
+        "year": "2003"
+    }, {
+        "sale": "176",
+        "year": "2010"
+    }]
+
+    data2 = [{
+        "sale": "152",
+        "year": "2000"
+    }, {
+        "sale": "189",
+        "year": "2002"
+    }, {
+        "sale": "179",
+        "year": "2004"
+    }, {
+        "sale": "199",
+        "year": "2006"
+    }, {
+        "sale": "134",
+        "year": "2008"
+    }, {
+        "sale": "176",
+        "year": "2010"
+    }]
+
+
+    vis = d3.select('#visualisation')
+    WIDTH = 1000
+    HEIGHT = 500
+    MARGINS = {
+      top: 20
+      right: 20
+      bottom: 20
+      left: 50
+    }
+
+
+    xScale = d3.scale.linear().range([MARGINS.left, WIDTH - MARGINS.right]).domain([2000,2010])
+    yScale = d3.scale.linear().range([HEIGHT - MARGINS.top, MARGINS.bottom]).domain([134,215])
+
+    xAxis = d3.svg.axis().scale(xScale)
+
+    vis.append("svg:g")
+    .attr("class","axis")
+    .attr("transform", "translate(0," + (HEIGHT - MARGINS.bottom) + ")")
+    .call(xAxis)
+
+    yAxis = d3.svg.axis()
+    .scale(yScale)
+    .orient("left")
+
+    vis.append("svg:g")
+    .attr("class","axis")
+    .attr("transform", "translate(" + (MARGINS.left) + ",0)")
+    .call(yAxis)
+
+    lineGen = d3.svg.line()
+      .x( (d)->
+        return xScale(d.year)
+      )
+      .y( (d)->
+        return yScale(d.sale)
+      )
+      # .interpolate("basis")
+
+    vis.append('svg:path')
+      .attr('d', lineGen(data))
+      .attr('stroke', 'green')
+      .attr('stroke-width', 2)
+      .attr('fill', 'none')
+
+    vis.append('svg:path')
+      .attr('d', lineGen(data2))
+      .attr('stroke', 'blue')
+      .attr('stroke-width', 2)
+      .attr('fill', 'none')
+
 
   onClassroomSync: ->
     # Now that we have the classroom from db, can request all level sessions for this classroom
@@ -97,7 +194,7 @@ module.exports = class TeacherStudentView extends RootView
     return if @destroyed # Don't do anything if page was destroyed after db request
     @updateLastPlayedString()
     @updateLevelProgressMap()
-    @updateLevelAverages()
+    @updateLevelDataMap()
 
 
   # onCourseInstancesSync: ->
@@ -178,25 +275,39 @@ module.exports = class TeacherStudentView extends RootView
         else
           @levelProgressMap[versionedLevel.original] = 'not started'
 
-  updateLevelAverages: ->
+  updateLevelDataMap: ->
     return unless @courses.loaded and @levels.loaded and @sessions?.loaded
 
-    @allLevelSessionMap = {}
+    @levelData = []
     for versionedCourse in @classroom.get('courses') ? []
+      course = _.find @courses.models, (c) => c.id is versionedCourse._id
       for versionedLevel in versionedCourse.levels
         @playTime = 0
         @timesPlayed = 0
+        @studentTime = null
+        @levelProgress = 'not started'
         for session in @sessions.models
           if session.get('level').original == versionedLevel.original
             @playTime += session.get('playtime') or 0
-            # console.log (session.get('playtime'))
             @timesPlayed += 1
+            if session.get('creator') is @studentID
+              @studentTime = session.get('playtime')
+              if @levelProgressMap[versionedLevel.original] == 'complete'
+                @levelProgress = 'complete'
+              else if @levelProgressMap[versionedLevel.original] == 'started'
+                @levelProgress = 'started'
         if @timesPlayed
-
-          console.log "playtime", @playTime
-          console.log "times played", @timesPlayed
-          @allLevelSessionMap[versionedLevel.original] = Math.round(@playTime / @timesPlayed)
-    console.log (@allLevelSessionMap)
+          @levelData.push {
+            levelID: versionedLevel.original
+            levelIndex: @classroom.getLevelNumber(versionedLevel.original)
+            levelName: versionedLevel.name
+            courseName: course.get('name')
+            courseID: course.get('_id')
+            class: Math.round(@playTime / @timesPlayed)
+            student: @studentTime
+            levelProgress: @levelProgress
+          }
+    console.log (@levelData)
 
     # new map for averages of all classroom playtimes
     # @averageLevelPlaytimeMap = {}
