@@ -36,8 +36,16 @@ block content
         span(data-i18n='view.user.status')
         span.spr License Status: 
         strong(class= status === 'expired' ? 'text-danger' : '')= view.studentStatusString()
-        
-        svg#visualisation(width="1000", height="520")
+        //- 
+        //- svg#visualisation(width="1000", height="520")
+        //- 
+        each versionedCourse in view.classroom.get('courses') || []
+          svg(id='visualisation-'+versionedCourse._id, width="1000", height="520")
+          //- svg(id='visualisation', width="1000", height="520")
+          //- - break;
+        //- svg#class(width="1000", height="520")
+        //- svg#student(width="1000", height="520")
+
         
         //- - console.log (view.levelData[1].levelIndex)
         

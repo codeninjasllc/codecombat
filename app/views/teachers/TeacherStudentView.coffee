@@ -80,46 +80,11 @@ module.exports = class TeacherStudentView extends RootView
         dot.tooltip('hide')
 
     # @drawLineGraph()
-    # @drawBarGraph()
-    @sampleBarGraph()
-
-  sampleBarGraph: ->
-    margin = {top: 20, right: 20, bottom: 30, left: 40}
-    width = 960 - margin.left - margin.right
-    height = 500 - margin.top - margin.bottom
-
-    x0 = d3.scale.ordinal()
-      .rangeRoundBands([0, width], .1)
-
-    x1 = d3.scale.ordinal()
-
-    y = d3.scale.linear()
-    .range([height, 0])
-
-    color = d3.scale.ordinal()
-    .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"])
-
-    xAxis = d3.svg.axis()
-    .scale(x0)
-    .orient("bottom")
-
-    yAxis = d3.svg.axis()
-    .scale(y)
-    .orient("left")
-    .tickFormat(d3.format(".2s"))
-
-    svg = d3.select("body").append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-    .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
-
-    # missing d3.csv function from example at https://bl.ocks.org/mbostock/3887051 and https://www.dashingd3js.com/lessons/basic-chart-grouped-bar-chart
-    # need to figure out how to not use d3.csv and instead import existing @levelData array
+    @drawBarGraph()
 
   drawBarGraph: ->
-    return unless @courses.loaded and @levels.loaded and @sessions?.loaded
-    vis = d3.select('#visualisation')
+    return unless @courses.loaded and @levels.loaded and @sessions?.loaded and @levelData
+
     WIDTH = 1000
     HEIGHT = 500
     MARGINS = {
@@ -129,50 +94,40 @@ module.exports = class TeacherStudentView extends RootView
       left: 50
     }
 
-    # xRange = d3.scale.linear().range([
-    #   MARGINS.left
-    #   WIDTH - (MARGINS.right)
-    # ]).domain([
-    #   d3.min(@levelData, (d) ->
-    #     d.levelIndex
-    #   )
-    #   d3.max(@levelData, (d) ->
-    #     d.levelIndex
-    #   )
-    # ])
-
-    xRange = d3.scale.ordinal().rangeRoundBands([MARGINS.left, WIDTH - MARGINS.right], 0.1).domain(@levelData.map( (d) -> d.levelIndex))
-
-    # yRange = d3.scale.linear().range([
-    #   HEIGHT - (MARGINS.top)
-    #   MARGINS.bottom
-    # ]).domain([
-    #   d3.min(@levelData, (d) ->
-    #     d.student
-    #   )
-    #   d3.max(@levelData, (d) ->
-    #     d.student
-    #   )
-    # ])
+    for versionedCourse in @classroom.get('courses') ? []
+      # if student has progress
+      vis = d3.select('#visualisation-'+versionedCourse._id)
+      courseLevelData = []
+      for level in @levelData when level.courseID is versionedCourse._id
+        courseLevelData.push level
 
 
-    yRange = d3.scale.linear().range([HEIGHT - (MARGINS.top), MARGINS.bottom]).domain([0, d3.max(@levelData, (d) -> d.student)])
 
-    xAxis = d3.svg.axis().scale(xRange).tickSize(5).tickSubdivide(true)
-    yAxis = d3.svg.axis().scale(yRange).tickSize(5).orient('left').tickSubdivide(true)
+      xRange = d3.scale.ordinal().rangeRoundBands([MARGINS.left, WIDTH - MARGINS.right], 0.1).domain(courseLevelData.map( (d) -> d.levelIndex))
+      yRange = d3.scale.linear().range([HEIGHT - (MARGINS.top), MARGINS.bottom]).domain([0, d3.max(courseLevelData, (d) -> d.student)])
+      xAxis = d3.svg.axis().scale(xRange).tickSize(5).tickSubdivide(true)
+      yAxis = d3.svg.axis().scale(yRange).tickSize(5).orient('left').tickSubdivide(true)
 
-    vis.append('svg:g').attr('class', 'x axis').attr('transform', 'translate(0,' + (HEIGHT - (MARGINS.bottom)) + ')').call xAxis
-    vis.append('svg:g').attr('class', 'y axis').attr('transform', 'translate(' + MARGINS.left + ',0)').call yAxis
+      vis.append('svg:g').attr('class', 'x axis').attr('transform', 'translate(0,' + (HEIGHT - (MARGINS.bottom)) + ')').call xAxis
+      vis.append('svg:g').attr('class', 'y axis').attr('transform', 'translate(' + MARGINS.left + ',0)').call yAxis
 
-    # barGenStudent: ->
-    vis.selectAll('rect').data(@levelData).enter().append('rect').attr('x', (d) ->
-      xRange d.levelIndex
-    ).attr('y', (d) ->
-      yRange d.student
-    ).attr('width', xRange.rangeBand()).attr('height', (d) ->
-      HEIGHT - (MARGINS.bottom) - yRange(d.student)
-    ).attr 'fill', 'grey'
-
+      chart = vis.selectAll('rect')
+      .data(courseLevelData)
+      .enter()
+      chart.append('rect')
+        .attr('id', 'classroom')
+        .attr('x', ((d) -> xRange(d.levelIndex) + (xRange.rangeBand())/2))
+        .attr('y', (d) -> yRange d.class)
+        .attr('width', (xRange.rangeBand())/2)
+        .attr('height', (d) -> HEIGHT - (MARGINS.bottom) - yRange(d.class))
+        .attr('fill', '#5CB4D0')
+      chart.append('rect')
+        .attr('id', 'student')
+        .attr('x', ((d) -> xRange d.levelIndex))
+        .attr('y', (d) -> yRange d.student)
+        .attr('width', (xRange.rangeBand())/2)
+        .attr('height', (d) -> HEIGHT - (MARGINS.bottom) - yRange(d.student))
+        .attr('fill', '#20572B')
 
 
 
