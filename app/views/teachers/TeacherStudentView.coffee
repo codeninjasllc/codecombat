@@ -79,50 +79,46 @@ module.exports = class TeacherStudentView extends RootView
       }).delegate '.tooltip', 'mousemove', ->
         dot.tooltip('hide')
 
-    @drawGraph()
+    # @drawLineGraph()
+    # @drawBarGraph()
+    @sampleBarGraph()
 
-  drawGraph: ->
-    data = [{
-        "sale": "202",
-        "year": "2000"
-    }, {
-        "sale": "215",
-        "year": "2001"
-    }, {
-        "sale": "179",
-        "year": "2002"
-    }, {
-        "sale": "199",
-        "year": "2003"
-    }, {
-        "sale": "134",
-        "year": "2003"
-    }, {
-        "sale": "176",
-        "year": "2010"
-    }]
+  sampleBarGraph: ->
+    margin = {top: 20, right: 20, bottom: 30, left: 40}
+    width = 960 - margin.left - margin.right
+    height = 500 - margin.top - margin.bottom
 
-    data2 = [{
-        "sale": "152",
-        "year": "2000"
-    }, {
-        "sale": "189",
-        "year": "2002"
-    }, {
-        "sale": "179",
-        "year": "2004"
-    }, {
-        "sale": "199",
-        "year": "2006"
-    }, {
-        "sale": "134",
-        "year": "2008"
-    }, {
-        "sale": "176",
-        "year": "2010"
-    }]
+    x0 = d3.scale.ordinal()
+      .rangeRoundBands([0, width], .1)
 
+    x1 = d3.scale.ordinal()
 
+    y = d3.scale.linear()
+    .range([height, 0])
+
+    color = d3.scale.ordinal()
+    .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"])
+
+    xAxis = d3.svg.axis()
+    .scale(x0)
+    .orient("bottom")
+
+    yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    .tickFormat(d3.format(".2s"))
+
+    svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
+    # missing d3.csv function from example at https://bl.ocks.org/mbostock/3887051 and https://www.dashingd3js.com/lessons/basic-chart-grouped-bar-chart
+    # need to figure out how to not use d3.csv and instead import existing @levelData array
+
+  drawBarGraph: ->
+    return unless @courses.loaded and @levels.loaded and @sessions?.loaded
     vis = d3.select('#visualisation')
     WIDTH = 1000
     HEIGHT = 500
@@ -133,9 +129,82 @@ module.exports = class TeacherStudentView extends RootView
       left: 50
     }
 
+    # xRange = d3.scale.linear().range([
+    #   MARGINS.left
+    #   WIDTH - (MARGINS.right)
+    # ]).domain([
+    #   d3.min(@levelData, (d) ->
+    #     d.levelIndex
+    #   )
+    #   d3.max(@levelData, (d) ->
+    #     d.levelIndex
+    #   )
+    # ])
 
-    xScale = d3.scale.linear().range([MARGINS.left, WIDTH - MARGINS.right]).domain([2000,2010])
-    yScale = d3.scale.linear().range([HEIGHT - MARGINS.top, MARGINS.bottom]).domain([134,215])
+    xRange = d3.scale.ordinal().rangeRoundBands([MARGINS.left, WIDTH - MARGINS.right], 0.1).domain(@levelData.map( (d) -> d.levelIndex))
+
+    # yRange = d3.scale.linear().range([
+    #   HEIGHT - (MARGINS.top)
+    #   MARGINS.bottom
+    # ]).domain([
+    #   d3.min(@levelData, (d) ->
+    #     d.student
+    #   )
+    #   d3.max(@levelData, (d) ->
+    #     d.student
+    #   )
+    # ])
+
+
+    yRange = d3.scale.linear().range([HEIGHT - (MARGINS.top), MARGINS.bottom]).domain([0, d3.max(@levelData, (d) -> d.student)])
+
+    xAxis = d3.svg.axis().scale(xRange).tickSize(5).tickSubdivide(true)
+    yAxis = d3.svg.axis().scale(yRange).tickSize(5).orient('left').tickSubdivide(true)
+
+    vis.append('svg:g').attr('class', 'x axis').attr('transform', 'translate(0,' + (HEIGHT - (MARGINS.bottom)) + ')').call xAxis
+    vis.append('svg:g').attr('class', 'y axis').attr('transform', 'translate(' + MARGINS.left + ',0)').call yAxis
+
+    # barGenStudent: ->
+    vis.selectAll('rect').data(@levelData).enter().append('rect').attr('x', (d) ->
+      xRange d.levelIndex
+    ).attr('y', (d) ->
+      yRange d.student
+    ).attr('width', xRange.rangeBand()).attr('height', (d) ->
+      HEIGHT - (MARGINS.bottom) - yRange(d.student)
+    ).attr 'fill', 'grey'
+
+
+
+
+  drawLineGraph: ->
+    return unless @courses.loaded and @levels.loaded and @sessions?.loaded
+
+    vis = d3.select('#visualisation')
+    WIDTH = 1000
+    HEIGHT = 500
+    MARGINS = {
+      top: 50
+      right: 20
+      bottom: 50
+      left: 50
+    }
+
+
+    xScale = d3.scale.linear().range([MARGINS.left, WIDTH - MARGINS.right]).domain([
+      d3.min(@levelData, (d) ->
+        return d.levelIndex
+      ),
+      d3.max(@levelData, (d) ->
+        return d.levelIndex
+      )])
+
+    yScale = d3.scale.linear().range([HEIGHT - MARGINS.top, MARGINS.bottom]).domain([
+      d3.min(@levelData, (d) ->
+        return d.student
+      ),
+      d3.max(@levelData, (d) ->
+        return d.student
+      )])
 
     xAxis = d3.svg.axis().scale(xScale)
 
@@ -153,26 +222,65 @@ module.exports = class TeacherStudentView extends RootView
     .attr("transform", "translate(" + (MARGINS.left) + ",0)")
     .call(yAxis)
 
-    lineGen = d3.svg.line()
+    lineGenStudent = d3.svg.line()
       .x( (d)->
-        return xScale(d.year)
+        return xScale(d.levelIndex)
       )
       .y( (d)->
-        return yScale(d.sale)
+        return yScale(d.student)
       )
       # .interpolate("basis")
 
-    vis.append('svg:path')
-      .attr('d', lineGen(data))
-      .attr('stroke', 'green')
-      .attr('stroke-width', 2)
-      .attr('fill', 'none')
+    lineGenClass = d3.svg.line()
+      .x( (d)->
+        return xScale(d.levelIndex)
+      )
+      .y( (d)->
+        return yScale(d.class)
+      )
 
-    vis.append('svg:path')
-      .attr('d', lineGen(data2))
-      .attr('stroke', 'blue')
-      .attr('stroke-width', 2)
-      .attr('fill', 'none')
+    # vis.append('svg:path')
+    #   .attr('d', lineGenStudent(@levelData))
+    #   .attr('stroke', 'green')
+    #   .attr('stroke-width', 2)
+    #   .attr('fill', 'none')
+
+    # vis.append('svg:path')
+    #   .attr('d', lineGenClass(@levelData))
+    #   .attr('stroke', 'blue')
+    #   .attr('stroke-width', 2)
+    #   .attr('fill', 'none')
+
+
+    dataGroup = d3.nest()
+    .key( (d)->
+      return d.courseID
+    )
+    .entries(@levelData)
+
+    lSpace = WIDTH/dataGroup.length
+
+    dataGroup.forEach (d, i) ->
+      # console.log (d.values[0].courseName)
+
+
+
+    dataGroup.forEach (d, i) ->
+      console.log (lineGenStudent(d.values))
+      vis.append('svg:path').attr('d', lineGenStudent(d.values)).attr('stroke', 'blue').attr('stroke-width', 2).attr('id', 'line_' + d.key).attr 'fill', 'none'
+      # vis.append('svg:path').attr('d', lineGenClass(d.values)).attr('stroke', 'red').attr('stroke-width', 2).attr('id', 'line_' + d.key).attr 'fill', 'none'
+      vis.append('text').attr('x', lSpace / 2 + i * lSpace).attr('y', HEIGHT).style('fill', 'black').attr('class', 'legend').on('click', ->
+        active = if d.active then false else true
+        opacity = if active then 0 else 1
+        d3.select('#line_' + d.key).style 'opacity', opacity
+        d.active = active
+        return
+      ).text d.values[0].courseName
+      # console.log (d.values[0].courseName)
+      return
+
+
+    # console.log (@levelData)
 
 
   onClassroomSync: ->
@@ -284,7 +392,7 @@ module.exports = class TeacherStudentView extends RootView
       for versionedLevel in versionedCourse.levels
         @playTime = 0
         @timesPlayed = 0
-        @studentTime = null
+        @studentTime = 0
         @levelProgress = 'not started'
         for session in @sessions.models
           if session.get('level').original == versionedLevel.original
@@ -296,18 +404,19 @@ module.exports = class TeacherStudentView extends RootView
                 @levelProgress = 'complete'
               else if @levelProgressMap[versionedLevel.original] == 'started'
                 @levelProgress = 'started'
-        if @timesPlayed
-          @levelData.push {
-            levelID: versionedLevel.original
-            levelIndex: @classroom.getLevelNumber(versionedLevel.original)
-            levelName: versionedLevel.name
-            courseName: course.get('name')
-            courseID: course.get('_id')
-            class: Math.round(@playTime / @timesPlayed)
-            student: @studentTime
-            levelProgress: @levelProgress
-          }
-    console.log (@levelData)
+        # if @timesPlayed
+        classAvg = if @timesPlayed then Math.round(@playTime / @timesPlayed) else 0
+        @levelData.push {
+          levelID: versionedLevel.original
+          levelIndex: @classroom.getLevelNumber(versionedLevel.original)
+          levelName: versionedLevel.name
+          courseName: course.get('name')
+          courseID: course.get('_id')
+          class: classAvg
+          student: @studentTime
+          levelProgress: @levelProgress
+        }
+    # console.log (@levelData)
 
     # new map for averages of all classroom playtimes
     # @averageLevelPlaytimeMap = {}
