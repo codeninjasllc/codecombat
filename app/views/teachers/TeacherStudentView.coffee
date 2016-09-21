@@ -94,22 +94,30 @@ module.exports = class TeacherStudentView extends RootView
       left: 50
     }
 
+    # console.log (@classroom)
+
     for versionedCourse in @classroom.get('courses') ? []
-      # if student has progress
+      # this does all of the courses, logic for whether student was assigned is in corresponding jade file
       vis = d3.select('#visualisation-'+versionedCourse._id)
       courseLevelData = []
       for level in @levelData when level.courseID is versionedCourse._id
         courseLevelData.push level
 
+      course = _.find @courses.models, (c) => c.id is versionedCourse._id
 
+      levels = @classroom.getLevels({courseID: course.id}).models
+      # console.log (levels)
 
       xRange = d3.scale.ordinal().rangeRoundBands([MARGINS.left, WIDTH - MARGINS.right], 0.1).domain(courseLevelData.map( (d) -> d.levelIndex))
-      yRange = d3.scale.linear().range([HEIGHT - (MARGINS.top), MARGINS.bottom]).domain([0, d3.max(courseLevelData, (d) -> d.student)])
-      xAxis = d3.svg.axis().scale(xRange).tickSize(5).tickSubdivide(true)
-      yAxis = d3.svg.axis().scale(yRange).tickSize(5).orient('left').tickSubdivide(true)
+      # console.log (courseLevelData.map( (d) -> d.levelIndex))
+      yRange = d3.scale.linear().range([HEIGHT - (MARGINS.top), MARGINS.bottom]).domain([0, d3.max(courseLevelData, (d) -> d.class)])
+      xAxis = d3.svg.axis().scale(xRange).tickSize(2).tickSubdivide(true)
+      yAxis = d3.svg.axis().scale(yRange).tickSize(2).orient('left').tickSubdivide(true)
 
       vis.append('svg:g').attr('class', 'x axis').attr('transform', 'translate(0,' + (HEIGHT - (MARGINS.bottom)) + ')').call xAxis
       vis.append('svg:g').attr('class', 'y axis').attr('transform', 'translate(' + MARGINS.left + ',0)').call yAxis
+
+
 
       chart = vis.selectAll('rect')
       .data(courseLevelData)
@@ -121,6 +129,13 @@ module.exports = class TeacherStudentView extends RootView
         .attr('width', (xRange.rangeBand())/2)
         .attr('height', (d) -> HEIGHT - (MARGINS.bottom) - yRange(d.class))
         .attr('fill', '#5CB4D0')
+
+      chart.append('text')
+        .attr('x', ((d) -> xRange(d.levelIndex) + (xRange.rangeBand())/2))
+        .attr('y', ((d) -> yRange(d.class) - 3 ))
+        .text((d)->d.class) # can't seem to get rid of "0" values with coffeescript if/then
+        .attr('class', 'label')
+
       chart.append('rect')
         .attr('id', 'student')
         .attr('x', ((d) -> xRange d.levelIndex))
@@ -129,6 +144,18 @@ module.exports = class TeacherStudentView extends RootView
         .attr('height', (d) -> HEIGHT - (MARGINS.bottom) - yRange(d.student))
         .attr('fill', '#20572B')
 
+      chart.append('text')
+        .attr('x', ((d) -> xRange(d.levelIndex)) )
+        .attr('y', ((d) -> yRange(d.student) - 3 ))
+        .text((d)->d.student) # can't seem to get rid of "0" values with coffeescript if/then
+        .attr('class', 'label')
+
+      vis.append("text")
+        .attr("x", (WIDTH / 2))
+        .attr("y", 20)
+        .attr("text-anchor", "middle")
+        .style("font-size", "16px")
+        .text(course.get('name'))
 
 
   drawLineGraph: ->

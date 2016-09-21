@@ -40,11 +40,12 @@ block content
         //- svg#visualisation(width="1000", height="520")
         //- 
         each versionedCourse in view.classroom.get('courses') || []
-          svg(id='visualisation-'+versionedCourse._id, width="1000", height="520")
-          //- svg(id='visualisation', width="1000", height="520")
-          //- - break;
-        //- svg#class(width="1000", height="520")
-        //- svg#student(width="1000", height="520")
+          - var course = _.find(view.courses.models, function(c) {return c.id === versionedCourse._id;});
+          if !course
+            - continue;
+          - var instance = view.courseInstances.findWhere({ courseID: course.id, classroomID: view.classroom.id })
+          - if ((instance && instance.hasMember(view.user)))
+            svg(id='visualisation-'+versionedCourse._id, width="1000", height="520")
 
         
         //- - console.log (view.levelData[1].levelIndex)
@@ -55,6 +56,8 @@ block content
           // Apply License
           // Edit password
           // Remove Student
+          
+          
         //- .student-chart
         //-   div.student-levels-progress
         //-     //- if view.allLevelSessionMap
