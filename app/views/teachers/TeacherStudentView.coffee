@@ -23,8 +23,11 @@ module.exports = class TeacherStudentView extends RootView
   template: require 'templates/teachers/teacher-student-view'
   # helper: helper
   events:
-    'click .assign-student-button': 'onClickAssignStudentButton'
+    'click .assign-student-button': 'onClickAssignStudentButton' # this button isn't working yet
     'click .enroll-student-button': 'onClickEnrollStudentButton' # this button isn't working yet
+    'change #course-dropdown': 'onChangeCourseChart'
+
+
 
   getTitle: -> return @user?.broadName()
 
@@ -81,16 +84,29 @@ module.exports = class TeacherStudentView extends RootView
 
     # @drawLineGraph()
     @drawBarGraph()
+    @onChangeCourseChart()
+
+
+  onChangeCourseChart: (e)->
+    # show() the one that's selected
+    # console.log ((e.currentTarget).value)
+    if (e)
+      selected = ('#visualisation-'+((e.currentTarget).value))
+      $("[id|='visualisation']").hide()
+      $(selected).show()
+
+
+    # hide() all the others
 
   drawBarGraph: ->
     return unless @courses.loaded and @levels.loaded and @sessions?.loaded and @levelData
 
-    WIDTH = 1000
-    HEIGHT = 500
+    WIDTH = 1142
+    HEIGHT = 600
     MARGINS = {
-      top: 20
+      top: 50
       right: 20
-      bottom: 20
+      bottom: 50
       left: 50
     }
 
@@ -102,22 +118,24 @@ module.exports = class TeacherStudentView extends RootView
       courseLevelData = []
       for level in @levelData when level.courseID is versionedCourse._id
         courseLevelData.push level
+        #TODO exclude practice levels from this graph.
+
+      # console.log (courseLevelData)
 
       course = _.find @courses.models, (c) => c.id is versionedCourse._id
 
       levels = @classroom.getLevels({courseID: course.id}).models
       # console.log (levels)
 
+
+
       xRange = d3.scale.ordinal().rangeRoundBands([MARGINS.left, WIDTH - MARGINS.right], 0.1).domain(courseLevelData.map( (d) -> d.levelIndex))
-      # console.log (courseLevelData.map( (d) -> d.levelIndex))
       yRange = d3.scale.linear().range([HEIGHT - (MARGINS.top), MARGINS.bottom]).domain([0, d3.max(courseLevelData, (d) -> d.class)])
       xAxis = d3.svg.axis().scale(xRange).tickSize(2).tickSubdivide(true)
       yAxis = d3.svg.axis().scale(yRange).tickSize(2).orient('left').tickSubdivide(true)
 
       vis.append('svg:g').attr('class', 'x axis').attr('transform', 'translate(0,' + (HEIGHT - (MARGINS.bottom)) + ')').call xAxis
       vis.append('svg:g').attr('class', 'y axis').attr('transform', 'translate(' + MARGINS.left + ',0)').call yAxis
-
-
 
       chart = vis.selectAll('rect')
       .data(courseLevelData)
@@ -133,7 +151,7 @@ module.exports = class TeacherStudentView extends RootView
       chart.append('text')
         .attr('x', ((d) -> xRange(d.levelIndex) + (xRange.rangeBand())/2))
         .attr('y', ((d) -> yRange(d.class) - 3 ))
-        .text((d)->d.class) # can't seem to get rid of "0" values with coffeescript if/then
+        .text((d)-> if d.class isnt 0 then d.class)
         .attr('class', 'label')
 
       chart.append('rect')
@@ -147,15 +165,65 @@ module.exports = class TeacherStudentView extends RootView
       chart.append('text')
         .attr('x', ((d) -> xRange(d.levelIndex)) )
         .attr('y', ((d) -> yRange(d.student) - 3 ))
-        .text((d)->d.student) # can't seem to get rid of "0" values with coffeescript if/then
+        .text((d)-> if d.student isnt 0 then d.student)
         .attr('class', 'label')
+      #
+      # vis.append("text")
+      #   .attr("x", (WIDTH / 2))
+      #   .attr("y", 20)
+      #   .attr("text-anchor", "middle")
+      #   .style("font-size", "16px")
+      #   .text(course.get('name'))
 
-      vis.append("text")
-        .attr("x", (WIDTH / 2))
-        .attr("y", 20)
-        .attr("text-anchor", "middle")
-        .style("font-size", "16px")
-        .text(course.get('name'))
+
+      legend = vis.append("g")
+        .attr("class", "legend")
+        .attr("x", WIDTH - 20)
+        .attr("width", 100)
+        .attr("height", 100)
+
+      legend.append("rect")
+        .attr("x", WIDTH - 18)
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", "#20572B")
+
+      legend.append("text")
+        .attr("x", WIDTH - 24)
+        .attr("y", 9)
+        .attr("dy", ".35em")
+        .style("text-anchor", "end")
+        .text("Student Playtime")
+
+      legend.append("rect")
+        .attr("x", WIDTH - 18)
+        .attr("y", 25)
+        .attr("width", 18)
+        .attr("height", 18)
+        .style("fill", "#5CB4D0")
+
+      legend.append("text")
+        .attr("x", WIDTH - 24)
+        .attr("y", 30)
+        .attr("dy", ".55em")
+        .style("text-anchor", "end")
+        .text("Class Average")
+
+      labels = vis.append("g")
+
+      labels.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 60)
+        .attr("x", -20)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .text("Playtime in Seconds")
+
+      labels.append("text")
+        .attr("x", WIDTH/2)
+        .attr("y", HEIGHT - 10)
+        .text("Levels in " + (course.get('name')))
+        .style("text-anchor", "middle")
 
 
   drawLineGraph: ->
@@ -397,6 +465,7 @@ module.exports = class TeacherStudentView extends RootView
           class: classAvg
           student: @studentTime
           levelProgress: @levelProgress
+          # required:
         }
     # console.log (@levelData)
 
@@ -437,7 +506,9 @@ module.exports = class TeacherStudentView extends RootView
         if user
           user.set(newUser.attributes)
       null
-  #
+
+
+
   # onLoaded: ->
   #   console.log("on loaded")
   #   for courseInstance in @courseInstances.models

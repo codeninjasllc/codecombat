@@ -60,13 +60,23 @@
     .tooltip-arrow
       border-top-color: $navy
 
-svg[id|="visualisation"]
-  // background-color: $navy
 
-  text.label
-      font-size: 10px
-      fill: #000000
-      font-weight: bold
 
-  .domain
-    // fill: $navy
+  svg[id|="visualisation"]
+    // background-color: $navy
+    display: none
+
+    text.label
+        font-size: 10px
+        fill: #000000
+        font-weight: bold
+
+    .domain
+      // fill: $navy
+
+  .graphs :first-child
+    display: block
+
+  .graphsSelector
+    text-align: center
+    margin-bottom: 15px
