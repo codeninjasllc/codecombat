@@ -66,14 +66,11 @@ module.exports = class TeacherStudentView extends RootView
       }).delegate '.tooltip', 'mousemove', ->
         dot.tooltip('hide')
 
-    # @drawLineGraph()
     @drawBarGraph()
     @onChangeCourseChart()
 
 
   onChangeCourseChart: (e)->
-    # show() the one that's selected
-    # console.log ((e.currentTarget).value)
     if (e)
       selected = ('#visualisation-'+((e.currentTarget).value))
       $("[id|='visualisation']").hide()
@@ -93,11 +90,11 @@ module.exports = class TeacherStudentView extends RootView
         memberBit = 0
         for versionedLevel in versionedCourse.levels
           for session in @sessions.models
-            if session.get('level').original == versionedLevel.original and session.get('creator') == member
+            if session.get('level').original is versionedLevel.original and session.get('creator') is member
               # TODO IMPORTANT: only add number if @studentID in levelProgressMap has complete or started for the corresponding level
               # in @levelData there's a levelProgress. If for this levelID, levelProgress = complete or started, go ahead.
               temp = _.findWhere(@levelData, {levelID: session.get('level').original})
-              if temp.levelProgress == 'complete' or temp.levelProgress == 'started'
+              if temp.levelProgress is 'complete' or temp.levelProgress is 'started'
                 NUMBER += session.get('playtime') or 0
                 memberBit += 1
               if session.get('creator') is @studentID
@@ -147,12 +144,12 @@ module.exports = class TeacherStudentView extends RootView
 
       @courseComparisonMap.push {
         courseID: course.get('_id')
-        student: studentRate
+        studentRate: studentRate
         standardDev: StandardDev
         mean: MEAN
         performance: perf
       }
-    console.log (@courseComparisonMap)
+    # console.log (@courseComparisonMap)
 
   # calculateStandardDev: ->
   #   return unless @courses.loaded and @levels.loaded and @sessions?.loaded
@@ -209,22 +206,17 @@ module.exports = class TeacherStudentView extends RootView
     for versionedCourse in @classroom.get('courses') ? []
       # this does all of the courses, logic for whether student was assigned is in corresponding jade file
       vis = d3.select('#visualisation-'+versionedCourse._id)
+      # TODO: continue if selector isn't found.
       courseLevelData = []
       for level in @levelData when level.courseID is versionedCourse._id
         courseLevelData.push level
-
-      # rate = null
-      # for course in @courseComparisonMap when course.courseID is versionedCourse._id
-      #   if course.rate isnt null
-      #     rate = (course.rate).toFixed(2)
-      #     console.log (rate)
 
       course = _.find @courses.models, (c) => c.id is versionedCourse._id
       levels = @classroom.getLevels({courseID: course.id}).models
 
 
       xRange = d3.scale.ordinal().rangeRoundBands([MARGINS.left, WIDTH - MARGINS.right], 0.1).domain(courseLevelData.map( (d) -> d.levelIndex))
-      yRange = d3.scale.linear().range([HEIGHT - (MARGINS.top), MARGINS.bottom]).domain([0, d3.max(courseLevelData, (d) -> if d.class > d.student then d.class else d.student)])
+      yRange = d3.scale.linear().range([HEIGHT - (MARGINS.top), MARGINS.bottom]).domain([0, d3.max(courseLevelData, (d) -> if d.classAvg > d.studentTime then d.classAvg else d.studentTime)])
       xAxis = d3.svg.axis().scale(xRange).tickSize(1).tickSubdivide(true)
       yAxis = d3.svg.axis().scale(yRange).tickSize(1).orient('left').tickSubdivide(true)
 
@@ -232,38 +224,39 @@ module.exports = class TeacherStudentView extends RootView
       vis.append('svg:g').attr('class', 'y axis').attr('transform', 'translate(' + MARGINS.left + ',0)').call yAxis
 
       chart = vis.selectAll('rect')
-      .data(courseLevelData)
-      .enter()
+        .data(courseLevelData)
+        .enter()
+      # draw classroom average bars
       chart.append('rect')
-        .attr('id', 'classroom')
+        .attr('class', 'classroom-bar')
         .attr('x', ((d) -> xRange(d.levelIndex) + (xRange.rangeBand())/2))
-        .attr('y', (d) -> yRange(d.class))
+        .attr('y', (d) -> yRange(d.classAvg))
         .attr('width', (xRange.rangeBand())/2)
-        .attr('height', (d) -> HEIGHT - (MARGINS.bottom) - yRange(d.class))
+        .attr('height', (d) -> HEIGHT - (MARGINS.bottom) - yRange(d.classAvg))
         .attr('fill', '#5CB4D0')
-
+      # add classroom average values
       chart.append('text')
         .attr('x', ((d) -> xRange(d.levelIndex) + (xRange.rangeBand())/2))
-        .attr('y', ((d) -> yRange(d.class) - 3 ))
-        .text((d)-> if d.class isnt 0 then d.class)
+        .attr('y', ((d) -> yRange(d.classAvg) - 3 ))
+        .text((d)-> if d.classAvg isnt 0 then d.classAvg)
         .attr('class', 'label')
-
+      # draw student playtime bars
       chart.append('rect')
-        .attr('id', 'student')
+        .attr('class', 'student-bar')
         .attr('x', ((d) -> xRange(d.levelIndex)))
-        .attr('y', (d) -> yRange(d.student))
+        .attr('y', (d) -> yRange(d.studentTime))
         .attr('width', (xRange.rangeBand())/2)
-        .attr('height', (d) -> HEIGHT - (MARGINS.bottom) - yRange(d.student))
-        .attr('fill', (d) -> if d.levelProgress == 'complete' then '#20572B' else '#F2BE19')
-
+        .attr('height', (d) -> HEIGHT - (MARGINS.bottom) - yRange(d.studentTime))
+        .attr('fill', (d) -> if d.levelProgress is 'complete' then '#20572B' else '#F2BE19')
+      # add student playtime value
       chart.append('text')
         .attr('x', ((d) -> xRange(d.levelIndex)) )
-        .attr('y', ((d) -> yRange(d.student) - 3 ))
-        .text((d)-> if d.student isnt 0 then d.student)
+        .attr('y', ((d) -> yRange(d.studentTime) - 3 ))
+        .text((d)-> if d.studentTime isnt 0 then d.studentTime)
         .attr('class', 'label')
 
       labels = vis.append("g").attr("class", "labels")
-
+      # add Playtime axis label
       labels.append("text")
         .attr("transform", "rotate(-90)")
         .attr("y", 20)
@@ -271,21 +264,12 @@ module.exports = class TeacherStudentView extends RootView
         .attr("dy", ".71em")
         .style("text-anchor", "middle")
         .text($.i18n.t("teacher.playtime_axis"))
-
+      # add levels axis label
       labels.append("text")
         .attr("x", WIDTH/2)
         .attr("y", HEIGHT - 10)
         .text("Levels in " + (course.get('name')))
         .style("text-anchor", "middle")
-
-      # if rate isnt 0 and rate isnt null
-      #   if rate > 0 then rate = "+" + rate
-      #   labels.append("text")
-      #     .attr("x", WIDTH - 50)
-      #     .attr("y", HEIGHT - 10)
-      #     .text("Student Course Speed: " + rate + "%")
-      #     .style("text-anchor", "end")
-      #     .style("fill", (d) -> if rate > 0 then "green" else "red")
 
 
   onClassroomSync: ->
@@ -298,7 +282,6 @@ module.exports = class TeacherStudentView extends RootView
     @students = new Users()
     jqxhrs = @students.fetchForClassroom(@classroom, removeDeleted: true)
     # @listenTo @students, ->
-    #   console.log @students
     @supermodel.trackRequests jqxhrs
 
   onSessionsSync: ->
@@ -372,7 +355,6 @@ module.exports = class TeacherStudentView extends RootView
 
     # Map levels to sessions once, so we don't have to search entire session list multiple times below
     @levelSessionMap = {}
-    # for session in @sessions.models when session.get('creator') is @studentID
     for session in @sessions.models when session.get('creator') is @studentID
       @levelSessionMap[session.get('level').original] = session
 
@@ -397,32 +379,32 @@ module.exports = class TeacherStudentView extends RootView
     for versionedCourse in @classroom.get('courses') ? []
       course = _.find @courses.models, (c) => c.id is versionedCourse._id
       for versionedLevel in versionedCourse.levels
-        @playTime = 0 # this and @timesPlayed should probably only count when the levels are completed
-        @timesPlayed = 0
-        @studentTime = 0
-        @levelProgress = 'not started'
+        playTime = 0 # TODO: this and timesPlayed should probably only count when the levels are completed
+        timesPlayed = 0
+        studentTime = 0
+        levelProgress = 'not started'
         for session in @sessions.models
-          if session.get('level').original == versionedLevel.original
+          if session.get('level').original is versionedLevel.original
             # if @levelProgressMap[versionedLevel.original] == 'complete' # ideally, don't log sessions that aren't completed in the class
-            @playTime += session.get('playtime') or 0
-            @timesPlayed += 1
+            playTime += session.get('playtime') or 0
+            timesPlayed += 1
             if session.get('creator') is @studentID
-              @studentTime = session.get('playtime') # this can be null, apparently.
-              if @levelProgressMap[versionedLevel.original] == 'complete'
-                @levelProgress = 'complete'
-              else if @levelProgressMap[versionedLevel.original] == 'started'
-                @levelProgress = 'started'
-        classAvg = if @timesPlayed and @timesPlayed > 0 then Math.round(@playTime / @timesPlayed) else 0 # only when someone other than the user has played
-        # console.log (@timesPlayed)
+              studentTime = session.get('playtime') or 0
+              if @levelProgressMap[versionedLevel.original] is 'complete'
+                levelProgress = 'complete'
+              else if @levelProgressMap[versionedLevel.original] is 'started'
+                levelProgress = 'started'
+        classAvg = if timesPlayed > 0 then Math.round(playTime / timesPlayed) else 0 # only when someone other than the user has played
+        # console.log (timesPlayed)
         @levelData.push {
           levelID: versionedLevel.original
           levelIndex: @classroom.getLevelNumber(versionedLevel.original)
           levelName: versionedLevel.name
           courseName: course.get('name')
           courseID: course.get('_id')
-          class: classAvg
-          student: if @studentTime then @studentTime else 0
-          levelProgress: @levelProgress
+          classAvg: classAvg
+          studentTime: if studentTime then studentTime else 0
+          levelProgress: levelProgress
           # required:
         }
     # console.log (@levelData)
@@ -448,22 +430,24 @@ module.exports = class TeacherStudentView extends RootView
       when 'expired' then $.i18n.t('teacher.status_expired')
     return string.replace('{{date}}', moment(expires).utc().format('l'))
 
-  onClickEnrollStudentButton: (e) ->
-    userID = $(e.currentTarget).data('user-id')
-    user = @user.get(userID)
-    selectedUsers = new Users([user])
-    @enrollStudents(selectedUsers)
-    window.tracker?.trackEvent $(e.currentTarget).data('event-action'), category: 'Teachers', classroomID: @classroom.id, userID: userID, ['Mixpanel']
+  # TODO: Hookup enroll/assign functionality 
 
-  enrollStudents: (selectedUsers) ->
-    modal = new ActivateLicensesModal { @classroom, selectedUsers, users: @user }
-    @openModalView(modal)
-    modal.once 'redeem-users', (enrolledUsers) =>
-      enrolledUsers.each (newUser) =>
-        user = @user.get(newUser.id)
-        if user
-          user.set(newUser.attributes)
-      null
+  # onClickEnrollStudentButton: (e) ->
+  #   userID = $(e.currentTarget).data('user-id')
+  #   user = @user.get(userID)
+  #   selectedUsers = new Users([user])
+  #   @enrollStudents(selectedUsers)
+  #   window.tracker?.trackEvent $(e.currentTarget).data('event-action'), category: 'Teachers', classroomID: @classroom.id, userID: userID, ['Mixpanel']
+  #
+  # enrollStudents: (selectedUsers) ->
+  #   modal = new ActivateLicensesModal { @classroom, selectedUsers, users: @user }
+  #   @openModalView(modal)
+  #   modal.once 'redeem-users', (enrolledUsers) =>
+  #     enrolledUsers.each (newUser) =>
+  #       user = @user.get(newUser.id)
+  #       if user
+  #         user.set(newUser.attributes)
+  #     null
 
 
 
