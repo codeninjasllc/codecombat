@@ -9,12 +9,6 @@ User = require 'models/User'
 Users = require 'collections/Users'
 CourseInstances = require 'collections/CourseInstances'
 require 'vendor/d3'
-# Users = require 'collections/Users'
-# helper = require 'lib/coursesHelper'
-# popoverTemplate = require 'templates/courses/classroom-level-popover'
-# Prepaids = require 'collections/Prepaids'
-# utils = require 'core/utils'
-# CocoCollection = require 'collections/CocoCollection'
 
 
 
@@ -37,24 +31,13 @@ module.exports = class TeacherStudentView extends RootView
     @supermodel.trackRequest(@classroom.fetch())
 
     @courses = new Courses()
-    # @courses.comparator = '_id'
-    # @courseInstances = new CocoCollection([], { url: "/db/course_instance", model: CourseInstance})
-    # @courseInstances.comparator = 'courseID'
-    # @supermodel.loadCollection(@courseInstances, { data: { classroomID: classroomID } })
-    # @listenToOnce @courses, 'sync', @onCourseInstancesSync
     @supermodel.trackRequest(@courses.fetch({data: { project: 'name' }}))
 
     @courseInstances = new CourseInstances()
     @supermodel.trackRequest @courseInstances.fetchForClassroom(classroomID)
 
     @levels = new Levels()
-    # @levels.fetchForClassroom(classroomID, {data: {project: 'name,original,practice,slug'}})
-    # @levels.on 'add', (model) -> @_byId[model.get('original')] = model # so you can 'get' them
     @supermodel.trackRequest(@levels.fetchForClassroom(classroomID, {data: {project: 'name,original'}}))
-    #
-    # @user = new User({_id: studentID})
-    # @supermodel.trackRequest(@user.fetch())
-
     @urls = require('core/urls')
 
 
@@ -69,6 +52,7 @@ module.exports = class TeacherStudentView extends RootView
       @updateLastPlayedString()
       @updateLevelProgressMap()
       @updateLevelDataMap()
+      @calculateStandardDev()
       @render()
     super()
 
@@ -95,11 +79,122 @@ module.exports = class TeacherStudentView extends RootView
       $("[id|='visualisation']").hide()
       $(selected).show()
 
+  calculateStandardDev: ->
+    return unless @courses.loaded and @levels.loaded and @sessions?.loaded and @levelData
 
-    # hide() all the others
+    @courseComparisonMap = []
+    for versionedCourse in @classroom.get('courses') ? []
+      course = _.find @courses.models, (c) => c.id is versionedCourse._id
+      numbers = []
+      studentRate = 0
+      members = 0 #this is the COUNT for our standard deviation
+      for member in @classroom.get('members')
+        NUMBER = 0
+        memberBit = 0
+        for versionedLevel in versionedCourse.levels
+          for session in @sessions.models
+            if session.get('level').original == versionedLevel.original and session.get('creator') == member
+              # TODO IMPORTANT: only add number if @studentID in levelProgressMap has complete or started for the corresponding level
+              # in @levelData there's a levelProgress. If for this levelID, levelProgress = complete or started, go ahead.
+              temp = _.findWhere(@levelData, {levelID: session.get('level').original})
+              if temp.levelProgress == 'complete' or temp.levelProgress == 'started'
+                NUMBER += session.get('playtime') or 0
+                memberBit += 1
+              if session.get('creator') is @studentID
+                studentRate += session.get('playtime') or 0
+        if memberBit > 0 then members += 1
+        numbers.push NUMBER
+
+      # add all numbers[]
+      SUM = 0
+      for num in numbers
+        SUM += num
+
+      # divide by members to get MEAN, remember MEAN is only an average of the members' performance on levels THIS student has done.
+      MEAN = SUM/members
+
+      # make new list diffSquared[]
+      diffSquared = []
+
+      # for each number in numbers[], subtract MEAN then SQUARE, put new number in diffSquared
+      for num in numbers
+        diffSquared.push ((num-MEAN)*(num-MEAN))
+
+      # add all diffSquared[] then divide by COUNT to get VARIANCE
+      diffSum = 0
+      for num in diffSquared
+        diffSum += num
+      VARIANCE = (diffSum / members)
+
+      # square root of VARIANCE is standardDev
+      StandardDev = Math.sqrt(VARIANCE)
+
+      perf = 0
+      if studentRate > MEAN
+        perf -=1
+        if studentRate > (MEAN + StandardDev)
+          perf -= 1
+          if studentRate > (MEAN + (StandardDev*2))
+            perf -=1
+      else if studentRate < MEAN
+        perf += 1
+        if studentRate < (MEAN - StandardDev)
+          perf +=1
+          if studentRate < (MEAN - (StandardDev*2))
+            perf +=1
+      # perf 1 and -1 are within 1 std, perf 2 is AMAZING, perf -2 needs some help
+      # can consider doing half of standard dev to capture more granularity
+
+      @courseComparisonMap.push {
+        courseID: course.get('_id')
+        student: studentRate
+        standardDev: StandardDev
+        mean: MEAN
+        performance: perf
+      }
+    console.log (@courseComparisonMap)
+
+  # calculateStandardDev: ->
+  #   return unless @courses.loaded and @levels.loaded and @sessions?.loaded
+  #
+  #   @courseComparisonMap = []
+  #   for versionedCourse in @classroom.get('courses') ? []
+  #     course = _.find @courses.models, (c) => c.id is versionedCourse._id
+  #     # @courseTotal = 0
+  #     @studentLevelsPlayed = 0 # count for standard deviation
+  #     for versionedLevel in versionedCourse.levels
+  #       @playTime = 0 # this should probably only count when the levels are completed
+  #       # @timesPlayed = 0
+  #       @studentTime = 0
+  #       # @levelProgress = 'not started'
+  #       for session in @sessions.models
+  #         if session.get('level').original == versionedLevel.original
+  #           # if @levelProgressMap[versionedLevel.original] == 'complete' # ideally, don't log sessions that aren't completed in the class
+  #           @playTime += session.get('playtime') or 0
+  #           # @timesPlayed += 1
+  #           if session.get('creator') is @studentID
+  #             @studentLevelsPlayed += 1
+  #             @studentTime = session.get('playtime') or 0 # this can be null, apparently.
+  #             # if @levelProgressMap[versionedLevel.original] == 'complete'
+  #               # @levelProgress = 'complete'
+  #             # else if @levelProgressMap[versionedLevel.original] == 'started'
+  #               # @levelProgress = 'started'
+  #             classAvg = if @timesPlayed and @timesPlayed > 0 then Math.round(@playTime / @timesPlayed) else 0 # only when someone other than the user has played
+  #             # console.log (@timesPlayed)
+  #             # @performance = if classAvg isnt 0  and @levelProgress isnt 'not started' then ((classAvg - @studentTime)/classAvg)*100 else 0
+  #             # @courseTotal += @performance
+  #
+  #             @courseComparisonMap.push {
+  #               courseID: course.get('_id')
+  #               # rate: if @studentLevelsPlayed isnt 0 then (@courseTotal / @studentLevelsPlayed) else null
+  #               studentRate: null
+  #               standardDev: null
+  #             }
+  #   console.log (@courseComparisonMap)
+
 
   drawBarGraph: ->
-    return unless @courses.loaded and @levels.loaded and @sessions?.loaded and @levelData
+    return unless @courses.loaded and @levels.loaded and @sessions?.loaded and @levelData and @courseComparisonMap
 
     WIDTH = 1142
     HEIGHT = 600
@@ -110,7 +205,6 @@ module.exports = class TeacherStudentView extends RootView
       left: 70
     }
 
-    # console.log (@classroom)
 
     for versionedCourse in @classroom.get('courses') ? []
       # this does all of the courses, logic for whether student was assigned is in corresponding jade file
@@ -119,8 +213,13 @@ module.exports = class TeacherStudentView extends RootView
       for level in @levelData when level.courseID is versionedCourse._id
         courseLevelData.push level
 
-      course = _.find @courses.models, (c) => c.id is versionedCourse._id
+      # rate = null
+      # for course in @courseComparisonMap when course.courseID is versionedCourse._id
+      #   if course.rate isnt null
+      #     rate = (course.rate).toFixed(2)
+      #     console.log (rate)
 
+      course = _.find @courses.models, (c) => c.id is versionedCourse._id
       levels = @classroom.getLevels({courseID: course.id}).models
 
 
@@ -178,6 +277,15 @@ module.exports = class TeacherStudentView extends RootView
         .attr("y", HEIGHT - 10)
         .text("Levels in " + (course.get('name')))
         .style("text-anchor", "middle")
+
+      # if rate isnt 0 and rate isnt null
+      #   if rate > 0 then rate = "+" + rate
+      #   labels.append("text")
+      #     .attr("x", WIDTH - 50)
+      #     .attr("y", HEIGHT - 10)
+      #     .text("Student Course Speed: " + rate + "%")
+      #     .style("text-anchor", "end")
+      #     .style("fill", (d) -> if rate > 0 then "green" else "red")
 
 
   onClassroomSync: ->
@@ -305,7 +413,7 @@ module.exports = class TeacherStudentView extends RootView
               else if @levelProgressMap[versionedLevel.original] == 'started'
                 @levelProgress = 'started'
         classAvg = if @timesPlayed and @timesPlayed > 0 then Math.round(@playTime / @timesPlayed) else 0 # only when someone other than the user has played
-        console.log (@timesPlayed)
+        # console.log (@timesPlayed)
         @levelData.push {
           levelID: versionedLevel.original
           levelIndex: @classroom.getLevelNumber(versionedLevel.original)

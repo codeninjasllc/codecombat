@@ -12,44 +12,44 @@ block content
       +breadcrumbs
       if !me.isAnonymous() && me.isTeacher()
       - var isOwner = view.classroom ? view.classroom.get('ownerID') === me.id : false;
-        // - var validStudent = ...  
-        // load all students in this class
-        // check if this student is in the class
           
       if isOwner
-        // also check if validStudent 
-        h3(class="m-t-2")
-          span(data-i18n="teacher.student_profile")
-          span.spr :
-          span= view.user.get('name')
-        // this user object doesn't have an email property
-        h4(class="student-details" data-i18n="teacher.student_overview")
-        if (view.user.get('email'))
-          div(class="small-details")
-            span(data-i18n="teacher.student_email")
+          h3(class="m-t-2")
+            span(data-i18n="teacher.student_profile")
             span.spr :
-            span= view.user.get('email')
-        else
-          div(class="small-details") 
-            i(data-i18n="teacher.no_email")
-        div(class="small-details")
-          span(data-i18n="user.last_played")
-          span.spr :
-          span= view.lastPlayedString
-          
-        div(class="small-details") 
-          - var status = view.user.prepaidStatus()
-          span(data-i18n='view.user.status')
-          span.spr
-          span(data-i18n="teacher.license_status")
-          span.spr : 
-          strong(class= status === 'expired' ? 'text-danger' : '')= view.studentStatusString()
-        //- 
-        //- svg#visualisation(width="1000", height="520")
-        //- 
+            span= view.user.get('name')
+          .classroom-info-row.container-fluid.row
+            .overview.col-md-4
+              h4(class="student-details" data-i18n="teacher.student_overview")
+              if (view.user.get('email'))
+                div(class="small-details")
+                  span(data-i18n="teacher.student_email")
+                  span.spr :
+                  span= view.user.get('email')
+              else
+                div(class="small-details") 
+                  i(data-i18n="teacher.no_email")
+              div(class="small-details")
+                span(data-i18n="user.last_played")
+                span.spr :
+                span= view.lastPlayedString
+                
+              div(class="small-details") 
+                - var status = view.user.prepaidStatus()
+                span(data-i18n='view.user.status')
+                span.spr
+                span(data-i18n="teacher.license_status")
+                span.spr : 
+                strong(class= status === 'expired' ? 'text-danger' : '')= view.studentStatusString()
+                
+                
+            .performance.col-md-8
+              h4.student-details
+                span Recommendation 
+              div.small-details
+                span Performance: 
         
-        div.playtime-charts
-          // i18n needed
+        .playtime-charts
           h4(data-i18n="teacher.playtime_detail")
         
           .graphsSelector
@@ -64,6 +64,7 @@ block content
                 - var instance = view.courseInstances.findWhere({ courseID: course.id, classroomID: view.classroom.id })
                 - if ((instance && instance.hasMember(view.user)))
                   option(value=course.id)=course.get('name')
+
             div.legend
               svg(width=15, height=15, style="margin: 0 5px 0 0")
                 rect(width=15, height=15,fill="rgb(32, 87, 43)")
@@ -82,6 +83,10 @@ block content
               - var course = _.find(view.courses.models, function(c) {return c.id === versionedCourse._id;});
               if !course
                 - continue;
+              //- - var rate = _.find(view.courseComparisonMap, function(c) {return c.id === versionedCourse._id;});
+              //- - console.log (rate);
+              //- - console.log (rate.rate);
+              //- span= _.find(view.courseComparisonMap)
               - var instance = view.courseInstances.findWhere({ courseID: course.id, classroomID: view.classroom.id })
               - if ((instance && instance.hasMember(view.user)))
                 svg(id='visualisation-'+versionedCourse._id, width="1142", height="600")
