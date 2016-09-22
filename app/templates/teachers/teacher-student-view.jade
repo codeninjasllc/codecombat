@@ -60,6 +60,7 @@ block content
               each versionedCourse in view.classroom.get('courses') || []
                 - var course = _.find(view.courses.models, function(c) {return c.id === versionedCourse._id;});
                 if !course
+                  // TODO: make sure this doesn't happen when data is loaded. 
                   - continue;
                 - var instance = view.courseInstances.findWhere({ courseID: course.id, classroomID: view.classroom.id })
                 - if ((instance && instance.hasMember(view.user)))

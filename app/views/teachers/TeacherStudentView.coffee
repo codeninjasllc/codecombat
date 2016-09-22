@@ -17,8 +17,8 @@ module.exports = class TeacherStudentView extends RootView
   template: require 'templates/teachers/teacher-student-view'
   # helper: helper
   events:
-    'click .assign-student-button': 'onClickAssignStudentButton' # this button isn't working yet
-    'click .enroll-student-button': 'onClickEnrollStudentButton' # this button isn't working yet
+    # 'click .assign-student-button': 'onClickAssignStudentButton' # TODO: make this work
+    # 'click .enroll-student-button': 'onClickEnrollStudentButton' # TODO: make this work
     'change #course-dropdown': 'onChangeCourseChart'
 
 
@@ -344,7 +344,7 @@ module.exports = class TeacherStudentView extends RootView
     @lastPlayedString += course.get('name') if course
     @lastPlayedString += ": " if course and level
     @lastPlayedString += level.get('name') if level
-    @lastPlayedString += ", on " if @lastPlayedString
+    @lastPlayedString += ", on " if course or level
     @lastPlayedString += moment(session.get('changed')).format("LLLL")
     # console.log (moment(session.get('changed')).format("LLLL"))
     # Rerun template/jade file to display new last played string
@@ -423,14 +423,20 @@ module.exports = class TeacherStudentView extends RootView
 
   studentStatusString: () ->
     status = @user.prepaidStatus()
+    return "" unless @user.get('coursePrepaid')
     expires = @user.get('coursePrepaid')?.endDate
     string = switch status
       when 'not-enrolled' then $.i18n.t('teacher.status_not_enrolled')
       when 'enrolled' then (if expires then $.i18n.t('teacher.status_enrolled') else '-')
       when 'expired' then $.i18n.t('teacher.status_expired')
-    return string.replace('{{date}}', moment(expires).utc().format('l'))
+    if expires
+      return string.replace('{{date}}', moment(expires).utc().format('l'))
+    else
+      # this probably doesn't happen
+      return string.replace('{{date}}', "Never")
 
-  # TODO: Hookup enroll/assign functionality 
+
+  # TODO: Hookup enroll/assign functionality
 
   # onClickEnrollStudentButton: (e) ->
   #   userID = $(e.currentTarget).data('user-id')
