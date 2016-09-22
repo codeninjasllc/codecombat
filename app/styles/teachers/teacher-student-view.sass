@@ -3,11 +3,70 @@
 @import "app/styles/style-flat-variables"
 
 #teacher-student-view
+  .breadcrumbs
+    color: #065e73
+    a
+      color: #065e73
+
+  .student-details
+    margin-top: 20px
+
+  .playtime-charts
+    margin-top: 30px
+
+    h4
+      margin-bottom: 15px
+      // font-weight: 600
+
+
+  svg[id|="visualisation"]
+    // background-color: $navy
+    display: none
+
+    text.label
+        font-size: 11px
+        fill: #000000
+        font-weight: bold
+
+    .domain
+      // fill: $navy
+
+    g.tick
+      font-size: 13px
+
+    g.labels
+      font-size: 15px
+      font-weight: 600
+
+  .graphs :first-child
+    display: block
+
+  .graphsSelector
+    text-align: center
+    margin-bottom: 10px
+
+  div.legend
+    text-align: center
+    padding: 10px 0 0 0
+    font-size: 15px
+    font-style: italic
+
+
+  .student-levels
+    margin-top: 30px
+    margin-bottom: 30px
+
+    h4
+      margin-bottom: 10px
+      // font-weight: 600
 
   .course-row
     padding-left: 75px
     padding-top: 15px
     padding-bottom: 30px
+
+    .course-info
+      font-weight: 600
 
   .progress-dot
     margin: 5px
@@ -59,24 +118,3 @@
       border-color: $navy
     .tooltip-arrow
       border-top-color: $navy
-
-
-
-  svg[id|="visualisation"]
-    // background-color: $navy
-    display: none
-
-    text.label
-        font-size: 10px
-        fill: #000000
-        font-weight: bold
-
-    .domain
-      // fill: $navy
-
-  .graphs :first-child
-    display: block
-
-  .graphsSelector
-    text-align: center
-    margin-bottom: 15px

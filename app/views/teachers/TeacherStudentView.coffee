@@ -107,7 +107,7 @@ module.exports = class TeacherStudentView extends RootView
       top: 50
       right: 20
       bottom: 50
-      left: 50
+      left: 70
     }
 
     # console.log (@classroom)
@@ -118,21 +118,16 @@ module.exports = class TeacherStudentView extends RootView
       courseLevelData = []
       for level in @levelData when level.courseID is versionedCourse._id
         courseLevelData.push level
-        #TODO exclude practice levels from this graph.
-
-      # console.log (courseLevelData)
 
       course = _.find @courses.models, (c) => c.id is versionedCourse._id
 
       levels = @classroom.getLevels({courseID: course.id}).models
-      # console.log (levels)
-
 
 
       xRange = d3.scale.ordinal().rangeRoundBands([MARGINS.left, WIDTH - MARGINS.right], 0.1).domain(courseLevelData.map( (d) -> d.levelIndex))
-      yRange = d3.scale.linear().range([HEIGHT - (MARGINS.top), MARGINS.bottom]).domain([0, d3.max(courseLevelData, (d) -> d.class)])
-      xAxis = d3.svg.axis().scale(xRange).tickSize(2).tickSubdivide(true)
-      yAxis = d3.svg.axis().scale(yRange).tickSize(2).orient('left').tickSubdivide(true)
+      yRange = d3.scale.linear().range([HEIGHT - (MARGINS.top), MARGINS.bottom]).domain([0, d3.max(courseLevelData, (d) -> if d.class > d.student then d.class else d.student)])
+      xAxis = d3.svg.axis().scale(xRange).tickSize(1).tickSubdivide(true)
+      yAxis = d3.svg.axis().scale(yRange).tickSize(1).orient('left').tickSubdivide(true)
 
       vis.append('svg:g').attr('class', 'x axis').attr('transform', 'translate(0,' + (HEIGHT - (MARGINS.bottom)) + ')').call xAxis
       vis.append('svg:g').attr('class', 'y axis').attr('transform', 'translate(' + MARGINS.left + ',0)').call yAxis
@@ -143,7 +138,7 @@ module.exports = class TeacherStudentView extends RootView
       chart.append('rect')
         .attr('id', 'classroom')
         .attr('x', ((d) -> xRange(d.levelIndex) + (xRange.rangeBand())/2))
-        .attr('y', (d) -> yRange d.class)
+        .attr('y', (d) -> yRange(d.class))
         .attr('width', (xRange.rangeBand())/2)
         .attr('height', (d) -> HEIGHT - (MARGINS.bottom) - yRange(d.class))
         .attr('fill', '#5CB4D0')
@@ -156,181 +151,33 @@ module.exports = class TeacherStudentView extends RootView
 
       chart.append('rect')
         .attr('id', 'student')
-        .attr('x', ((d) -> xRange d.levelIndex))
-        .attr('y', (d) -> yRange d.student)
+        .attr('x', ((d) -> xRange(d.levelIndex)))
+        .attr('y', (d) -> yRange(d.student))
         .attr('width', (xRange.rangeBand())/2)
         .attr('height', (d) -> HEIGHT - (MARGINS.bottom) - yRange(d.student))
-        .attr('fill', '#20572B')
+        .attr('fill', (d) -> if d.levelProgress == 'complete' then '#20572B' else '#F2BE19')
 
       chart.append('text')
         .attr('x', ((d) -> xRange(d.levelIndex)) )
         .attr('y', ((d) -> yRange(d.student) - 3 ))
         .text((d)-> if d.student isnt 0 then d.student)
         .attr('class', 'label')
-      #
-      # vis.append("text")
-      #   .attr("x", (WIDTH / 2))
-      #   .attr("y", 20)
-      #   .attr("text-anchor", "middle")
-      #   .style("font-size", "16px")
-      #   .text(course.get('name'))
 
-
-      legend = vis.append("g")
-        .attr("class", "legend")
-        .attr("x", WIDTH - 20)
-        .attr("width", 100)
-        .attr("height", 100)
-
-      legend.append("rect")
-        .attr("x", WIDTH - 18)
-        .attr("width", 18)
-        .attr("height", 18)
-        .style("fill", "#20572B")
-
-      legend.append("text")
-        .attr("x", WIDTH - 24)
-        .attr("y", 9)
-        .attr("dy", ".35em")
-        .style("text-anchor", "end")
-        .text("Student Playtime")
-
-      legend.append("rect")
-        .attr("x", WIDTH - 18)
-        .attr("y", 25)
-        .attr("width", 18)
-        .attr("height", 18)
-        .style("fill", "#5CB4D0")
-
-      legend.append("text")
-        .attr("x", WIDTH - 24)
-        .attr("y", 30)
-        .attr("dy", ".55em")
-        .style("text-anchor", "end")
-        .text("Class Average")
-
-      labels = vis.append("g")
+      labels = vis.append("g").attr("class", "labels")
 
       labels.append("text")
         .attr("transform", "rotate(-90)")
-        .attr("y", 60)
-        .attr("x", -20)
+        .attr("y", 20)
+        .attr("x", - HEIGHT/2)
         .attr("dy", ".71em")
-        .style("text-anchor", "end")
-        .text("Playtime in Seconds")
+        .style("text-anchor", "middle")
+        .text($.i18n.t("teacher.playtime_axis"))
 
       labels.append("text")
         .attr("x", WIDTH/2)
         .attr("y", HEIGHT - 10)
         .text("Levels in " + (course.get('name')))
         .style("text-anchor", "middle")
-
-
-  drawLineGraph: ->
-    return unless @courses.loaded and @levels.loaded and @sessions?.loaded
-
-    vis = d3.select('#visualisation')
-    WIDTH = 1000
-    HEIGHT = 500
-    MARGINS = {
-      top: 50
-      right: 20
-      bottom: 50
-      left: 50
-    }
-
-
-    xScale = d3.scale.linear().range([MARGINS.left, WIDTH - MARGINS.right]).domain([
-      d3.min(@levelData, (d) ->
-        return d.levelIndex
-      ),
-      d3.max(@levelData, (d) ->
-        return d.levelIndex
-      )])
-
-    yScale = d3.scale.linear().range([HEIGHT - MARGINS.top, MARGINS.bottom]).domain([
-      d3.min(@levelData, (d) ->
-        return d.student
-      ),
-      d3.max(@levelData, (d) ->
-        return d.student
-      )])
-
-    xAxis = d3.svg.axis().scale(xScale)
-
-    vis.append("svg:g")
-    .attr("class","axis")
-    .attr("transform", "translate(0," + (HEIGHT - MARGINS.bottom) + ")")
-    .call(xAxis)
-
-    yAxis = d3.svg.axis()
-    .scale(yScale)
-    .orient("left")
-
-    vis.append("svg:g")
-    .attr("class","axis")
-    .attr("transform", "translate(" + (MARGINS.left) + ",0)")
-    .call(yAxis)
-
-    lineGenStudent = d3.svg.line()
-      .x( (d)->
-        return xScale(d.levelIndex)
-      )
-      .y( (d)->
-        return yScale(d.student)
-      )
-      # .interpolate("basis")
-
-    lineGenClass = d3.svg.line()
-      .x( (d)->
-        return xScale(d.levelIndex)
-      )
-      .y( (d)->
-        return yScale(d.class)
-      )
-
-    # vis.append('svg:path')
-    #   .attr('d', lineGenStudent(@levelData))
-    #   .attr('stroke', 'green')
-    #   .attr('stroke-width', 2)
-    #   .attr('fill', 'none')
-
-    # vis.append('svg:path')
-    #   .attr('d', lineGenClass(@levelData))
-    #   .attr('stroke', 'blue')
-    #   .attr('stroke-width', 2)
-    #   .attr('fill', 'none')
-
-
-    dataGroup = d3.nest()
-    .key( (d)->
-      return d.courseID
-    )
-    .entries(@levelData)
-
-    lSpace = WIDTH/dataGroup.length
-
-    dataGroup.forEach (d, i) ->
-      # console.log (d.values[0].courseName)
-
-
-
-    dataGroup.forEach (d, i) ->
-      console.log (lineGenStudent(d.values))
-      vis.append('svg:path').attr('d', lineGenStudent(d.values)).attr('stroke', 'blue').attr('stroke-width', 2).attr('id', 'line_' + d.key).attr 'fill', 'none'
-      # vis.append('svg:path').attr('d', lineGenClass(d.values)).attr('stroke', 'red').attr('stroke-width', 2).attr('id', 'line_' + d.key).attr 'fill', 'none'
-      vis.append('text').attr('x', lSpace / 2 + i * lSpace).attr('y', HEIGHT).style('fill', 'black').attr('class', 'legend').on('click', ->
-        active = if d.active then false else true
-        opacity = if active then 0 else 1
-        d3.select('#line_' + d.key).style 'opacity', opacity
-        d.active = active
-        return
-      ).text d.values[0].courseName
-      # console.log (d.values[0].courseName)
-      return
-
-
-    # console.log (@levelData)
 
 
   onClassroomSync: ->
@@ -404,10 +251,11 @@ module.exports = class TeacherStudentView extends RootView
     # Update last played string based on what we found
     @lastPlayedString = ""
     @lastPlayedString += course.get('name') if course
-    @lastPlayedString += ", " if course and level
+    @lastPlayedString += ": " if course and level
     @lastPlayedString += level.get('name') if level
-    @lastPlayedString += ", " if @lastPlayedString
-    @lastPlayedString += session.get('changed')
+    @lastPlayedString += ", on " if @lastPlayedString
+    @lastPlayedString += moment(session.get('changed')).format("LLLL")
+    # console.log (moment(session.get('changed')).format("LLLL"))
     # Rerun template/jade file to display new last played string
     @render()
 
@@ -416,6 +264,7 @@ module.exports = class TeacherStudentView extends RootView
 
     # Map levels to sessions once, so we don't have to search entire session list multiple times below
     @levelSessionMap = {}
+    # for session in @sessions.models when session.get('creator') is @studentID
     for session in @sessions.models when session.get('creator') is @studentID
       @levelSessionMap[session.get('level').original] = session
 
@@ -440,22 +289,23 @@ module.exports = class TeacherStudentView extends RootView
     for versionedCourse in @classroom.get('courses') ? []
       course = _.find @courses.models, (c) => c.id is versionedCourse._id
       for versionedLevel in versionedCourse.levels
-        @playTime = 0
+        @playTime = 0 # this and @timesPlayed should probably only count when the levels are completed
         @timesPlayed = 0
         @studentTime = 0
         @levelProgress = 'not started'
         for session in @sessions.models
           if session.get('level').original == versionedLevel.original
+            # if @levelProgressMap[versionedLevel.original] == 'complete' # ideally, don't log sessions that aren't completed in the class
             @playTime += session.get('playtime') or 0
             @timesPlayed += 1
             if session.get('creator') is @studentID
-              @studentTime = session.get('playtime')
+              @studentTime = session.get('playtime') # this can be null, apparently.
               if @levelProgressMap[versionedLevel.original] == 'complete'
                 @levelProgress = 'complete'
               else if @levelProgressMap[versionedLevel.original] == 'started'
                 @levelProgress = 'started'
-        # if @timesPlayed
-        classAvg = if @timesPlayed then Math.round(@playTime / @timesPlayed) else 0
+        classAvg = if @timesPlayed and @timesPlayed > 0 then Math.round(@playTime / @timesPlayed) else 0 # only when someone other than the user has played
+        console.log (@timesPlayed)
         @levelData.push {
           levelID: versionedLevel.original
           levelIndex: @classroom.getLevelNumber(versionedLevel.original)
@@ -463,7 +313,7 @@ module.exports = class TeacherStudentView extends RootView
           courseName: course.get('name')
           courseID: course.get('_id')
           class: classAvg
-          student: @studentTime
+          student: if @studentTime then @studentTime else 0
           levelProgress: @levelProgress
           # required:
         }

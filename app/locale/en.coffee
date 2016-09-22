@@ -1499,6 +1499,16 @@
     unlock_resources: "Unlock more resources!"
     unlock_resources_desc: "Gain access to additional guides by adding student licenses to your account. Request a demo today to get started."
     request_demo: "Request Demo"
+    student_overview: "Overview"
+    student_email: "Student Email"
+    no_email: "Student has no email address set."
+    student_profile: "Student Profile"
+    playtime_detail: "Playtime Detail"
+    student_completed: "Student Completed"
+    student_in_progress: "Student in Progress"
+    class_average: "Class Average"
+    not_assigned: "has not been assigned the following courses"
+    playtime_axis: "Playtime in Seconds"
 
   sharing:
     game: "Game"
