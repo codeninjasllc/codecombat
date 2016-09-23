@@ -119,6 +119,7 @@ module.exports = class TeacherStudentView extends RootView
 
       @courseComparisonMap.push {
         courseID: course.get('_id')
+        courseName: course.get('name')
         studentCourseTotal: studentCourseTotal
         standardDev: StandardDev
         mean: mean
