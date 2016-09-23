@@ -19,7 +19,7 @@ block content
             span.spr :
             span= view.user.get('name')
           .classroom-info-row.container-fluid.row
-            .overview.col-md-4
+            .overview.col-md-5
               h4.student-details(data-i18n="teacher.student_overview")
               if (view.user.get('email'))
                 .small-details
@@ -43,7 +43,7 @@ block content
                 strong(class= status === 'expired' ? 'text-danger' : '')= view.studentStatusString()
                 
                 
-            .performance.col-md-8
+            .performance.col-md-7
               h4.student-details
                 span Recommendation 
               div.small-details
