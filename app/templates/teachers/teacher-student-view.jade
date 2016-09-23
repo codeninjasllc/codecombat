@@ -45,9 +45,48 @@ block content
                 
             .performance.col-md-7
               h4.student-details
-                span Recommendation 
-              div.small-details
-                span Performance: 
+                span(data-i18n="TODO") Our Recommendation 
+                .recommendation(style="width:100%")
+                
+                  // get view.courseComparisonMap 
+                  // warn = [] -- push course name when -2 
+                  // great = []-- push course name when +2
+                  // good = [] -- push course name when +/- 1
+                  // for all courses in courseComparisonMap
+                  //    get perf, push course to one of the three arrays based on value 
+                  
+                  
+                  // only display if warn.length > 0 
+                  div(class="glyphicon glyphicon-exclamation-sign")
+                  div(class="small-details", style="padding:0 15px 0 60px; width: 94%" )
+                    strong 
+                      span.spr= view.user.get('name')
+                      span(data-i18n="TODO") might need some help in the following courses:
+                      // stringfy course names from warn[]
+                      .warn Computer Science 1, Web Development 1
+                    .status
+                      span(data-i18n="TODO") This student’s level playtimes for these courses indicate that they might need some help with new concepts that are introduced. 
+                      
+                  // only display if great.length > 0
+                  div(class="glyphicon glyphicon-star", style="")
+                  div(class="small-details", style="padding:0 15px 0 60px; width: 94%" )
+                    strong 
+                      span.spr= view.user.get('name')
+                      span(data-i18n="TODO") is exceeding expectations in the following courses: 
+                      // stringfy course names from great[] 
+                      .great Computer Science 1, Web Development 1
+                    .status
+                      span(data-i18n="TODO") This student’s level playtimes for these courses indicate that they might be a good candidate to help other students in this class.
+                      
+                  // only display if good.length > 0
+                  div(class="glyphicon glyphicon-thumbs-up")
+                  div(class="small-details", style="padding:0 15px 0 60px; width: 94%" )
+                    strong 
+                      span.spr= view.user.get('name')
+                      span(data-i18n="TODO") is doing great! 
+                      // also stringfy course names from good[]? not sure. 
+                    .status
+                      span(data-i18n="TODO") This student’s level playtimes indicate that they are keeping pace with this class’s average playtimes for each course.  
         
         .playtime-charts
           h4(data-i18n="teacher.playtime_detail")
