@@ -125,6 +125,7 @@ module.exports = class TeacherStudentView extends RootView
         mean: mean
         performance: perf
       }
+
     # console.log (@courseComparisonMap)
 
   drawBarGraph: ->
@@ -259,6 +260,10 @@ module.exports = class TeacherStudentView extends RootView
     @lastPlayedString += ", on " if course or level
     @lastPlayedString += moment(session.get('changed')).format("LLLL")
     # console.log (moment(session.get('changed')).format("LLLL"))
+
+    # extra vars for display
+    @lastPlayedCourse = course
+
     # Rerun template/jade file to display new last played string
     @render()
 
